@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="description" content="MV Polering support-app med guides til tablet, app og printer." />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>MV Polering Support</title>
+  <style>
+    :root{
+      --bg:#f3f2ee;
+      --panel:#ffffff;
+      --panel-soft:#fbfaf7;
+      --line:#1b1b1b;
+      --line-soft:#d7d4cb;
+      --text:#151515;
+      --sub:#66635c;
+      --yellow:#f6ea12;
+      --red:#ff1b1b;
+      --ok:#1f9d55;
+      --warn:#d88c00;
+      --bad:#c43030;
+      --shadow:0 10px 30px rgba(0,0,0,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(246,234,18,.23), transparent 18%),
+        radial-gradient(circle at top left, rgba(255,27,27,.08), transparent 20%),
+        var(--bg);
+    }
+    img{max-width:100%;display:block}
+    button,input{font:inherit}
+    .app-shell{
+      min-height:100%;
+      display:flex;
+      flex-direction:column;
+    }
+    header{
+      position:sticky;
+      top:0;
+      z-index:20;
+      backdrop-filter:blur(10px);
+      background:rgba(243,242,238,.88);
+      border-bottom:2px solid var(--line);
+    }
+    .header-inner{
+      max-width:1320px;
+      margin:0 auto;
+      padding:14px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-width:0;
+    }
+    .brand-logo{
+      width:220px;
+      max-width:42vw;
+      height:auto;
+    }
+    .brand-copy{
+      min-width:0;
+    }
+    .eyebrow{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      margin:0 0 2px;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--sub);
+    }
+    .eyebrow::before{
+      content:"";
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:var(--red);
+      box-shadow:18px 0 0 var(--yellow);
+      margin-right:20px;
+    }
+    h1{
+      margin:0;
+      font-size:clamp(18px,2.2vw,24px);
+      line-height:1.05;
+    }
+    .subline{
+      margin:4px 0 0;
+      color:var(--sub);
+      font-size:13px;
+    }
+
+    .btn{
+      appearance:none;
+      border:2px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      box-shadow:var(--shadow);
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{
+      background:var(--yellow);
+    }
+    .btn.hidden{display:none}
+
+    .wrap{
+      width:min(1320px,100%);
+      margin:0 auto;
+      padding:18px;
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:18px;
+      align-items:start;
+      flex:1;
+    }
+    @media (max-width:1024px){
+      .wrap{grid-template-columns:1fr}
+    }
+
+    .panel{
+      background:var(--panel);
+      border:2px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    aside{
+      position:sticky;
+      top:94px;
+    }
+    @media (max-width:1024px){
+      aside{position:static}
+    }
+
+    .aside-top{
+      padding:16px;
+      border-bottom:1px solid var(--line-soft);
+      background:
+        linear-gradient(140deg, rgba(246,234,18,.24), rgba(255,255,255,0) 44%),
+        linear-gradient(320deg, rgba(255,27,27,.07), rgba(255,255,255,0) 55%),
+        var(--panel-soft);
+    }
+    .mini-brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .mini-brand-icon{
+      width:56px;
+      height:56px;
+      border-radius:16px;
+      border:2px solid var(--line);
+      background:#fff;
+      padding:6px;
+      box-shadow:var(--shadow);
+      object-fit:contain;
+    }
+    .mini-brand h2{
+      margin:0;
+      font-size:16px;
+      line-height:1.1;
+    }
+    .mini-brand p{
+      margin:4px 0 0;
+      font-size:12px;
+      color:var(--sub);
+    }
+
+    .search{
+      display:flex;
+      gap:8px;
+    }
+    .search input{
+      flex:1;
+      min-width:0;
+      background:#fff;
+      color:var(--text);
+      border:2px solid var(--line);
+      border-radius:14px;
+      padding:12px 14px;
+      outline:none;
+    }
+    .search input:focus{
+      box-shadow:0 0 0 4px rgba(246,234,18,.3);
+    }
+    .search kbd{
+      display:grid;
+      place-items:center;
+      min-width:42px;
+      padding:0 10px;
+      border-radius:14px;
+      border:2px solid var(--line);
+      background:#fff;
+      color:var(--sub);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .aside-body{
+      padding:16px;
+    }
+    .section-title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:12px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      font-weight:800;
+      color:var(--sub);
+      margin:2px 0 10px;
+    }
+    .section-title::after{
+      content:"";
+      flex:1;
+      height:2px;
+      background:linear-gradient(90deg, var(--line-soft), transparent);
+    }
+
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin:0 0 18px;
+    }
+    .chip{
+      border:2px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .15s ease, background .15s ease;
+    }
+    .chip:hover{transform:translateY(-1px)}
+    .chip.active{
+      background:var(--yellow);
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .card{
+      border:2px solid var(--line);
+      background:#fff;
+      border-radius:16px;
+      padding:14px;
+      cursor:pointer;
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+      position:relative;
+      overflow:hidden;
+      text-align:left;
+    }
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:0 auto 0 0;
+      width:8px;
+      background:linear-gradient(180deg, var(--yellow), var(--red));
+    }
+    .card:hover{
+      transform:translateY(-2px);
+      box-shadow:0 14px 30px rgba(0,0,0,.12);
+      background:#fffef8;
+    }
+    .card.active{
+      background:#fffef0;
+      box-shadow:0 14px 30px rgba(0,0,0,.12);
+    }
+    .card h3{
+      margin:0 0 8px 12px;
+      font-size:15px;
+      line-height:1.25;
+    }
+    .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      padding-left:12px;
+    }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      border:1.5px solid var(--line);
+      padding:4px 8px;
+      font-size:11px;
+      font-weight:800;
+      background:#fff;
+    }
+    .tag.category{
+      background:var(--yellow);
+    }
+    .tag.gray{
+      background:#f5f5f2;
+    }
+
+    main.panel{
+      min-height:calc(100vh - 150px);
+      display:flex;
+      flex-direction:column;
+    }
+    .titlebar{
+      padding:20px 22px;
+      border-bottom:2px solid var(--line);
+      background:
+        linear-gradient(145deg, rgba(246,234,18,.16), rgba(255,255,255,0) 30%),
+        linear-gradient(320deg, rgba(255,27,27,.06), rgba(255,255,255,0) 40%),
+        var(--panel-soft);
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:center;
+    }
+    .title-left{
+      min-width:0;
+    }
+    .titlebar h2{
+      margin:0;
+      font-size:clamp(20px,2.4vw,28px);
+      line-height:1.1;
+    }
+    .titlebar p{
+      margin:6px 0 0;
+      color:var(--sub);
+      font-size:14px;
+    }
+    .helper-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:2px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .content{
+      padding:22px;
+    }
+    .intro{
+      border:2px dashed var(--line-soft);
+      border-radius:22px;
+      padding:28px;
+      background:#fff;
+    }
+    .intro h3{
+      margin:0 0 10px;
+      font-size:22px;
+    }
+    .intro p{
+      margin:0;
+      color:var(--sub);
+      line-height:1.55;
+      max-width:64ch;
+    }
+
+    details{
+      border:2px solid var(--line);
+      background:#fff;
+      border-radius:18px;
+      margin:0 0 12px;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+    summary{
+      cursor:pointer;
+      list-style:none;
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      font-weight:800;
+      background:linear-gradient(90deg, rgba(246,234,18,.18), rgba(255,255,255,0));
+    }
+    summary::-webkit-details-marker{display:none}
+    .summary-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:var(--sub);
+      font-size:12px;
+      font-weight:700;
+    }
+    .step{
+      border-top:1px solid var(--line-soft);
+      padding:16px;
+      line-height:1.55;
+    }
+    .step-inner{
+      border-left:5px solid var(--line);
+      padding:4px 0 4px 14px;
+    }
+    .note .step-inner{border-left-color:var(--ok)}
+    .warn .step-inner{border-left-color:var(--warn)}
+    .danger .step-inner{border-left-color:var(--bad)}
+    .note .step{background:rgba(31,157,85,.06)}
+    .warn .step{background:rgba(216,140,0,.08)}
+    .danger .step{background:rgba(196,48,48,.08)}
+
+    .empty{
+      color:var(--sub);
+      padding:16px 4px 0;
+    }
+    .hidden{display:none}
+
+    footer{
+      border-top:2px solid var(--line);
+      background:#ffffffd9;
+      backdrop-filter:blur(8px);
+    }
+    .footer-inner{
+      max-width:1320px;
+      margin:0 auto;
+      padding:12px 18px;
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+      color:var(--sub);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    @media (max-width:720px){
+      .header-inner{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .brand{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+      .brand-logo{
+        width:200px;
+        max-width:100%;
+      }
+      .titlebar{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+      .content,
+      .titlebar,
+      .aside-top,
+      .aside-body{
+        padding-left:16px;
+        padding-right:16px;
+      }
+      .intro{
+        padding:22px 18px;
+      }
+    }
+
+    @media print{
+      header,aside,footer{display:none}
+      .wrap{display:block;padding:0}
+      main.panel{border:none;box-shadow:none;min-height:auto}
+      body{background:#fff}
+      .content{padding:0}
+      details{box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-inner">
+        <div class="brand">
+          <img class="brand-logo" src="./mv-polering-logo.png" alt="MV Polering logo" />
+          <div class="brand-copy">
+            <div class="eyebrow">Support App</div>
+            <h1>MV Polering Support</h1>
+            <p class="subline">Installérbar guide-app til tablet, app og printerfejl.</p>
+          </div>
+        </div>
+        <button class="btn primary hidden" id="installBtn">Installér app</button>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <aside class="panel">
+        <div class="aside-top">
+          <div class="mini-brand">
+            <img class="mini-brand-icon" src="./icon-192.png" alt="MV ikon" />
+            <div>
+              <h2>Supportoversigt</h2>
+              <p>Find hurtigt den rigtige guide og fejltype.</p>
+            </div>
+          </div>
+
+          <div class="search">
+            <input id="q" type="search" placeholder="Søg efter fejl, printer, app…" autocomplete="off" />
+            <kbd>/</kbd>
+          </div>
+        </div>
+
+        <div class="aside-body">
+          <div class="section-title">Kategorier</div>
+          <div class="chips" id="chips"></div>
+
+          <div class="section-title">Guides</div>
+          <div class="list" id="list"></div>
+          <div class="empty hidden" id="empty">Ingen resultater i den valgte kategori.</div>
+        </div>
+      </aside>
+
+      <main class="panel">
+        <div class="titlebar">
+          <div class="title-left">
+            <h2 id="view-title">Vælg en guide</h2>
+            <p id="view-subtitle">Søg i venstre side eller vælg en kategori for at komme hurtigt videre.</p>
+          </div>
+          <div class="helper-chip">MV Polering • Support</div>
+        </div>
+
+        <div class="content" id="view">
+          <div class="intro">
+            <h3>Alt samlet ét sted</h3>
+            <p>
+              Denne version er redesignet efter MV Polering-logoet og sat op som PWA, så den kan installeres fra GitHub Pages som en app.
+              Kategorier er også normaliseret, så dubletter som App/app og Printer/printer ikke længere splitter oversigten.
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <footer>
+      <div class="footer-inner">
+        <span>© 2026 MV Polering</span>
+        <span>Support-app til GitHub Pages og installation på mobil/tablet</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const RAW_GUIDES = [
+      {
+        id: 'printer-tilslutning',
+        title: 'Tilføj printer til tablet og app',
+        category: 'Printer',
+        tags: ['Printer', 'Bluetooth'],
+        steps: [
+          { type: 'text', body: 'Slide top panel ned og tilgå bluetooth-indstillinger ved at holde fingeren inde på bluetooth-ikonet.' },
+          { type: 'warn', body: 'Er der allerede en eller flere printere tilknyttet, så tryk på tandhjulet ud for printerens navn (TM-P20II_xxxxxx) og ophæv parring.' },
+          { type: 'note', body: 'Tænd for din printer.' },
+          { type: 'text', body: 'Åbn printeren, som hvis du skulle skifte bonrulle.' },
+          { type: 'text', body: 'Tryk nu én enkelt gang på "Feed"-knappen, som er til højre for tænd/sluk-knappen. Så skulle du høre en biplyd.' },
+          { type: 'warn', body: 'Luk printeren og sørg for, at papiret ikke er i klemme.' },
+          { type: 'text', body: 'Nu skal du trykke 2 gange på "Feed"-knappen. Først én gang kort, og derefter én gang hvor du holder den inde.' },
+          { type: 'note', body: 'Har du gjort det rigtigt, printes der en bon med bluetooth-oplysninger.' },
+          { type: 'text', body: 'Nu er printeren klar, så gå ind i bluetooth-indstillingerne på din tablet og find printeren.' },
+          { type: 'note', body: 'Printerens navn er altid TM-P20II_ efterfulgt af numre.' },
+          { type: 'text', body: 'Tryk nu på printerens navn og par enheden.' },
+          { type: 'text', body: 'Åbn nu MV Polering-appen, gå ind i indstillinger, og scroll ned til du ser "Printere".' },
+          { type: 'text', body: 'Søg efter printeren og vælg den.' },
+          { type: 'note', body: 'Din printer er nu tilknyttet. Husk at lave et testprint, så du sikrer dig, at det virker.' }
+        ]
+      },
+      {
+        id: 'app-crash',
+        title: 'Appen fryser eller lukker ned',
+        category: 'Tablet',
+        tags: ['Tablet', 'App'],
+        steps: [
+          { type: 'text', body: 'Luk appen helt og åbn den igen.' },
+          { type: 'text', body: 'Genstart tabletten, hvis problemet fortsætter.' },
+          { type: 'warn', body: 'Hvis det sker ofte, kontakt support.' }
+        ]
+      },
+      {
+        id: 'printer-advarsel',
+        title: 'Gult udråbstegn på printer og vil ikke printe',
+        category: 'Printer',
+        tags: ['Advarsel', 'Udråbstegn', 'Fejl'],
+        steps: [
+          { type: 'note', body: 'Start med at slukke din printer.' },
+          { type: 'text', body: 'Åbn printeren og fjern bonrullen.' },
+          { type: 'text', body: 'Tjek for papirstop eller fremmedlegemer i printeren.' },
+          { type: 'text', body: 'Sæt bonrullen i igen og luk printeren.' },
+          { type: 'text', body: 'Tænd printeren og prøv at printe en testbon.' },
+          { type: 'warn', body: 'Hvis det ikke virker, så sluk printeren.' },
+          { type: 'text', body: 'Vend den rundt og tag batteriet ud.' },
+          { type: 'text', body: 'Sæt batteriet i igen, tænd printeren og print en testbon.' },
+          { type: 'danger', body: 'Hvis problemet fortsætter, kontakt IT-support.' }
+        ]
+      },
+      {
+        id: 'ugearbejde-forsvundet',
+        title: 'Ugearbejde og notater forsvundet fra app',
+        category: 'app',
+        tags: ['ugearbejde', 'kunder'],
+        steps: [
+          { type: 'note', body: 'Tag det roligt. Umiddelbart er det ikke væk for altid.' },
+          { type: 'text', body: 'Start med at åbne din mail, find filen med dit ugearbejde og indlæs den.' },
+          { type: 'text', body: 'Hvis det ikke virker, så prøv at genstarte appen og indlæs filen igen.' },
+          { type: 'text', body: 'Hvis det stadig ikke virker, så tjek i Google Play om der ligger en opdatering til appen.' },
+          { type: 'warn', body: 'Hvis problemet fortsætter, kontakt support for yderligere hjælp.' }
+        ]
+      },
+      {
+        id: 'printer-halv-note',
+        title: 'Printer udskriver kun delvist eller går i stå',
+        category: 'printer',
+        tags: ['printer', 'enhed'],
+        steps: [
+          { type: 'text', body: 'Åbn printeren og tag bonrullen ud.' },
+          { type: 'text', body: 'Med en tør klud, puds forsigtigt det lille "spejl", som er placeret lige nede foran hvor knapperne sidder.' },
+          { type: 'text', body: 'Sæt bonrullen i og luk printeren. Tjek derefter om det virker.' },
+          { type: 'text', body: 'Hvis det ikke virker, så vend printeren rundt og klik batteriet ud.' },
+          { type: 'text', body: 'Sæt batteriet i igen og tænd printeren.' },
+          { type: 'note', body: 'Test herefter om det virker.' },
+          { type: 'warn', body: 'Hvis det stadig ikke virker, så sørg for at printeren kan ligge varmt et stykke tid, da kulde godt kan gøre, at den ikke kan printe korrekt.' },
+          { type: 'danger', body: 'Virker det stadig ikke? Så er printeren muligvis defekt. Kontakt IT-support.' }
+        ]
+      },
+      {
+        id: 'bonblank',
+        title: 'Printer udskriver blank bon',
+        category: 'Printer',
+        tags: ['Printer', 'Papir'],
+        steps: [
+          { type: 'text', body: 'Vend papirrullen. Den blanke side skal være opad.' },
+          { type: 'note', body: 'Du kan teste papiret ved at ridse det let. Den rigtige side tager imod ridser, det gør den forkerte normalt ikke.' }
+        ]
+      }
+    ];
+
+    function normalizeCategory(category = '') {
+      const key = category.trim().toLowerCase();
+      const map = {
+        printer: 'Printer',
+        tablet: 'Tablet',
+        app: 'App'
+      };
+      return map[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Andet');
+    }
+
+    function normalizeTag(tag = '') {
+      const cleaned = tag.trim();
+      if (!cleaned) return '';
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+    }
+
+    function uniqueCaseInsensitive(values) {
+      const seen = new Set();
+      return values.filter(value => {
+        const key = value.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    const GUIDES = RAW_GUIDES.map(guide => ({
+      ...guide,
+      category: normalizeCategory(guide.category),
+      tags: uniqueCaseInsensitive(guide.tags.map(normalizeTag)).filter(Boolean)
+    }));
+
+    const state = {
+      query: '',
+      category: 'Alle',
+      active: null
+    };
+
+    const el = selector => document.querySelector(selector);
+    const list = el('#list');
+    const chips = el('#chips');
+    const q = el('#q');
+    const view = el('#view');
+    const viewTitle = el('#view-title');
+    const viewSubtitle = el('#view-subtitle');
+    const empty = el('#empty');
+    const installBtn = el('#installBtn');
+
+    const categories = ['Alle', ...Array.from(new Set(GUIDES.map(g => g.category))).sort((a,b) => a.localeCompare(b, 'da'))];
+
+    function escapeHtml(value = '') {
+      return value.replace(/[&<>"']/g, char => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#39;'
+      }[char]));
+    }
+
+    function renderChips() {
+      chips.innerHTML = '';
+      categories.forEach(category => {
+        const button = document.createElement('button');
+        button.className = 'chip' + (state.category === category ? ' active' : '');
+        button.type = 'button';
+        button.textContent = category;
+        button.onclick = () => {
+          state.category = category;
+          renderChips();
+          renderList();
+        };
+        chips.appendChild(button);
+      });
+    }
+
+    function matchGuide(guide) {
+      const haystack = [
+        guide.title,
+        guide.category,
+        ...guide.tags,
+        ...guide.steps.map(step => step.body)
+      ].join(' ').toLowerCase();
+
+      const queryMatches = !state.query || haystack.includes(state.query.toLowerCase());
+      const categoryMatches = state.category === 'Alle' || guide.category === state.category;
+      return queryMatches && categoryMatches;
+    }
+
+    function renderList() {
+      const items = GUIDES.filter(matchGuide);
+      list.innerHTML = '';
+      empty.classList.toggle('hidden', items.length !== 0);
+
+      items.forEach(guide => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'card' + (state.active === guide.id ? ' active' : '');
+        card.innerHTML = `
+          <h3>${escapeHtml(guide.title)}</h3>
+          <div class="meta">
+            <span class="tag category">${escapeHtml(guide.category)}</span>
+            ${guide.tags.map(tag => `<span class="tag gray">${escapeHtml(tag)}</span>`).join('')}
+          </div>
+        `;
+        card.onclick = () => openGuide(guide.id);
+        list.appendChild(card);
+      });
+    }
+
+    function renderStep(step, index) {
+      const typeClass = ['note', 'warn', 'danger'].includes(step.type) ? step.type : 'text';
+      const labels = {
+        text: 'Standard trin',
+        note: 'Note',
+        warn: 'Vigtigt',
+        danger: 'Kontakt support'
+      };
+
+      return `
+        <details open class="${typeClass}">
+          <summary>
+            <span>Trin ${index + 1}</span>
+            <span class="summary-right">${labels[step.type] || labels.text}</span>
+          </summary>
+          <div class="step">
+            <div class="step-inner">${escapeHtml(step.body)}</div>
+          </div>
+        </details>
+      `;
+    }
+
+    function openGuide(id) {
+      const guide = GUIDES.find(item => item.id === id);
+      if (!guide) return;
+
+      state.active = id;
+      viewTitle.textContent = guide.title;
+      viewSubtitle.textContent = `${guide.category} • ${guide.tags.join(' • ')}`;
+
+      view.innerHTML = guide.steps.map(renderStep).join('');
+      renderList();
+    }
+
+    q.addEventListener('input', () => {
+      state.query = q.value.trim();
+      renderList();
+    });
+
+    window.addEventListener('keydown', event => {
+      if (event.key === '/' && document.activeElement !== q) {
+        event.preventDefault();
+        q.focus();
+      }
+    });
+
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredPrompt = event;
+      installBtn.classList.remove('hidden');
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBtn.classList.add('hidden');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installBtn.classList.add('hidden');
+      deferredPrompt = null;
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
+
+    renderChips();
+    renderList();
+  </script>
+</body>
+</html>
