@@ -653,7 +653,158 @@
           { type: 'text', body: 'Vend papirrullen. Den blanke side skal være opad.' },
           { type: 'note', body: 'Du kan teste papiret ved at ridse det let. Den rigtige side tager imod ridser, det gør den forkerte normalt ikke.' }
         ]
-      }
+      },
+      {
+        id: 'tablet-fryser',
+        title: 'Tablet fryser eller køre langsomt',
+        category: 'Tablet',
+        tags: ['tablet', 'enhed', 'android', 'samsung'],
+        steps: [
+          { type: 'text', body: 'Start med at genstarte din tablet, det løser det 9 ud af 10 gange' },
+          { type: 'warn', body: 'Hvis ikke det løste det' },
+          { type: 'text', body: 'Gå ind i indstillinger og tjek om der evt ligger en opdatering og venter' },
+          { type: 'warn', body: 'Hvis der ingen opdatering er, og den stadig er langsom kontakt IT'
+        ]
+      },
+      {
+    id: 'tablet-taender-ikke',
+    title: 'Tablet tænder ikke',
+    category: 'Tablet',
+    tags: ['Tablet', 'Opstart', 'Strøm'],
+    steps: [
+        { type: 'text', body: 'Tilslut tabletten til en oplader direkte i stikkontakten' },
+        { type: 'note', body: 'Lad den oplade i mindst 30-60 minutter før du tester igen' },
+        { type: 'text', body: 'Hold Power/Tænd-knappen og Lydstyrke ned nede samtidig i op til 60 sekunder' },
+        { type: 'note', body: 'Dette tvinger tabletten til at genstarte' },
+        { type: 'warn', body: 'Hvis der stadig ikke kommer liv, så prøv med en anden oplader og et andet kabel' },
+        { type: 'danger', body: 'Virker det stadig ikke, kan der være fejl på oplader, ladeport eller tablet' },
+    ]
+},
+{
+    id: 'sort-skaerm-men-taendt',
+    title: 'Sort skærm men tablet virker tændt',
+    category: 'Tablet',
+    tags: ['Skærm', 'Sort skærm', 'Tablet'],
+    steps: [
+        { type: 'text', body: 'Hold Power/Tænd-knappen og Lydstyrke ned nede samtidig i cirka 20 sekunder' },
+        { type: 'note', body: 'Det laver en tvungen genstart hvis systemet er låst' },
+        { type: 'text', body: 'Kontroller bagefter om Samsung-logoet vises ved opstart' },
+        { type: 'warn', body: 'Hvis skærmen stadig er helt sort, men tabletten vibrerer eller laver lyd, kan det være skærmfejl' },
+        { type: 'danger', body: 'Hvis problemet fortsætter, skal tabletten undersøges nærmere' },
+    ]
+},
+{
+    id: 'tablet-fryser-eller-reagerer-ikke',
+    title: 'Tablet fryser eller reagerer ikke',
+    category: 'Tablet',
+    tags: ['Fryser', 'Hænger', 'Reagerer ikke'],
+    steps: [
+        { type: 'text', body: 'Hold Lydstyrke ned og Power/Tænd-knappen nede i 7-10 sekunder' },
+        { type: 'note', body: 'Det laver en tvungen genstart' },
+        { type: 'text', body: 'Når tabletten er startet igen, så tjek om problemet kun sker i en bestemt app' },
+        { type: 'text', body: 'Opdater systemet og de apps der bruges mest' },
+        { type: 'warn', body: 'Hvis problemet kommer igen, så test tabletten i Safe Mode for at se om en app laver fejl' },
+    ]
+},
+{
+    id: 'touch-reagerer-daarligt',
+    title: 'Touchskærm reagerer dårligt eller forkert',
+    category: 'Tablet',
+    tags: ['Touch', 'Skærm', 'Tablet'],
+    steps: [
+        { type: 'text', body: 'Fjern eventuelt cover og skærmbeskytter midlertidigt og test igen' },
+        { type: 'text', body: 'Sørg for at skærmen er ren og tør' },
+        { type: 'text', body: 'Genstart tabletten med Lydstyrke ned + Power/Tænd-knappen' },
+        { type: 'text', body: 'Gå evt. i Indstillinger og slå øget touch-følsomhed til hvis tabletten bruger beskyttelsesglas' },
+        { type: 'warn', body: 'Hvis touch virker normalt i Safe Mode, er det sandsynligvis en installeret app der skaber problemet' },
+        { type: 'danger', body: 'Hvis touch stadig fejler overalt, kan det være hardwarefejl i skærmen' },
+    ]
+},
+{
+    id: 'tablet-oplader-ikke',
+    title: 'Tablet oplader ikke',
+    category: 'Opladning',
+    tags: ['Opladning', 'Batteri', 'USB'],
+    steps: [
+        { type: 'text', body: 'Brug en anden oplader og et andet kabel hvis muligt' },
+        { type: 'text', body: 'Tilslut opladeren direkte i en stikkontakt og ikke i en PC eller dockingstation' },
+        { type: 'text', body: 'Kontroller ladeporten for støv eller snavs' },
+        { type: 'warn', body: 'Stik ikke skarpe genstande ind i ladeporten' },
+        { type: 'text', body: 'Genstart tabletten og prøv opladning igen' },
+        { type: 'danger', body: 'Hvis den stadig ikke oplader, kan der være fejl på kabel, oplader, port eller batteri' },
+    ]
+},
+{
+    id: 'fugt-i-ladeport',
+    title: 'Fugt i ladeport / vanddråbe ikon',
+    category: 'Opladning',
+    tags: ['Fugt', 'Vanddråbe', 'USB'],
+    steps: [
+        { type: 'note', body: 'Hvis tabletten registrerer fugt i porten, vil opladning ofte blive blokeret som sikkerhed' },
+        { type: 'text', body: 'Frakobl opladeren med det samme' },
+        { type: 'text', body: 'Sluk tabletten og lad den tørre helt' },
+        { type: 'text', body: 'Lad den ligge et tørt sted og vent nogle timer før du prøver igen' },
+        { type: 'warn', body: 'Undgå at oplade så længe fugt-advarslen vises' },
+        { type: 'text', body: 'Hvis advarslen ikke forsvinder efter tørring, kan USB-cache/USB-indstillinger være låst og kræve yderligere fejlsøgning' },
+        { type: 'danger', body: 'Forsvinder fejlen stadig ikke, bør tabletten undersøges nærmere' },
+    ]
+},
+{
+    id: 'bluetooth-virker-ikke',
+    title: 'Bluetooth virker ikke',
+    category: 'Netværk',
+    tags: ['Bluetooth', 'Printer', 'Tilbehør'],
+    steps: [
+        { type: 'text', body: 'Slå Bluetooth fra og til igen' },
+        { type: 'text', body: 'Sørg for at enheden du vil forbinde til er i pairing mode' },
+        { type: 'text', body: 'Slet den gamle parring og prøv at forbinde igen' },
+        { type: 'text', body: 'Hold tablet og enhed tæt på hinanden under parring' },
+        { type: 'warn', body: 'Hvis enheden er forbundet til noget andet, skal den først frakobles dér' },
+        { type: 'text', body: 'Hvis problemet fortsætter, så nulstil Wi-Fi og Bluetooth-indstillinger' },
+    ]
+},
+{
+    id: 'batteri-draener-hurtigt',
+    title: 'Batteriet dræner hurtigt',
+    category: 'Batteri',
+    tags: ['Batteri', 'Strømforbrug', 'Ydeevne'],
+    steps: [
+        { type: 'text', body: 'Gå i Indstillinger > Batteri og kontroller hvilke apps der bruger mest strøm' },
+        { type: 'text', body: 'Slå funktioner fra som ikke bruges, f.eks. Bluetooth eller Wi-Fi' },
+        { type: 'text', body: 'Aktiver strømbesparelse hvis nødvendigt' },
+        { type: 'text', body: 'Sæt sjældent brugte apps i dvale eller deep sleep' },
+        { type: 'text', body: 'Brug Device care og tryk på Optimer nu' },
+        { type: 'warn', body: 'Hvis batteriet pludselig er blevet markant dårligere, kan batteriets tilstand være forværret' },
+    ]
+},
+{
+    id: 'lagerplads-fuld',
+    title: 'Lagerplads er fuld',
+    category: 'Ydeevne',
+    tags: ['Lager', 'Plads', 'Hukommelse'],
+    steps: [
+        { type: 'text', body: 'Gå til Indstillinger > Device care > Storage' },
+        { type: 'text', body: 'Slet unødvendige billeder, videoer, downloads og dokumenter' },
+        { type: 'text', body: 'Gå til Device care > Memory og tryk på Clean now' },
+        { type: 'text', body: 'Afinstaller apps der ikke længere bruges' },
+        { type: 'note', body: 'Nogle modeller understøtter flytning af filer til SD-kort hvis det bruges' },
+        { type: 'warn', body: 'Lav plads nok før du forsøger større opdateringer eller app-installationer' },
+    ]
+},
+{
+    id: 'safe-mode-fejlsoegning',
+    title: 'Fejlsøg i Safe Mode',
+    category: 'Tablet',
+    tags: ['Safe Mode', 'Fejlsøgning', 'Apps'],
+    steps: [
+        { type: 'note', body: 'Safe Mode bruges til at teste om en tredjepartsapp laver problemer' },
+        { type: 'text', body: 'Start tabletten i Safe Mode via opstarts-/strømmenuen afhængigt af model og softwareversion' },
+        { type: 'text', body: 'Test derefter om problemet stadig findes' },
+        { type: 'note', body: 'Hvis problemet forsvinder i Safe Mode, er det ofte en installeret app der er årsagen' },
+        { type: 'text', body: 'Fjern nyligt installerede eller mistænkelige apps én ad gangen' },
+        { type: 'warn', body: 'Menuer og trin til Safe Mode kan variere lidt mellem modeller og Android-versioner' },
+    ]
+}
     ];
 
     function normalizeCategory(category = '') {
