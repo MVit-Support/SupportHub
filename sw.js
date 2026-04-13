@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mv-polering-support-v2';
+const CACHE_NAME = 'mv-polering-support-v3';
 const APP_SHELL = [
   './',
   './index.html',
