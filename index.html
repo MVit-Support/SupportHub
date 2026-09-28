@@ -645,6 +645,30 @@
       color:var(--accent-dark);font-weight:700;font-size:12px;
       cursor:pointer;padding:4px 0;white-space:nowrap;
     }
+    .ai-camera{
+      position:fixed;inset:0;z-index:60;
+      background:#000;
+      display:flex;flex-direction:column;
+    }
+    .ai-camera.hidden{display:none}
+    .ai-camera video{flex:1;width:100%;height:100%;object-fit:contain;background:#000}
+    .ai-camera-bar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:18px 28px calc(18px + env(safe-area-inset-bottom));
+      background:rgba(0,0,0,.7);
+    }
+    .ai-camera-cancel,.ai-camera-flip{
+      border:0;background:rgba(255,255,255,.15);color:#fff;
+      font-weight:700;font-size:15px;padding:10px 16px;border-radius:999px;cursor:pointer;
+      min-width:64px;
+    }
+    .ai-camera-shoot{
+      width:72px;height:72px;border-radius:50%;
+      border:5px solid #fff;background:var(--accent);
+      box-shadow:0 0 0 4px rgba(255,255,255,.25);cursor:pointer;
+    }
+    .ai-photo{border:0}
+
     @media (max-width:720px){
       .ai-fab{right:14px;bottom:14px;padding:12px 16px;font-size:13px}
       .ai-sheet{

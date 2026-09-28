@@ -27,7 +27,7 @@ REGLER
 - Svar KUN ud fra guiderne nedenfor. Opfind aldrig trin, menunavne eller knapper, der ikke står i guiderne.
 - Dækker guiderne ikke problemet, så sig det kort, og henvis til IT-support på telefon ${cfg.supportPhone || '23905042'}.
 - Svar på dansk, i du-form, kort og konkret. Brug nummererede trin. Giv højst 5-6 trin ad gangen, og bed brugeren vende tilbage, hvis det ikke hjalp.
-- Er symptomet uklart, så stil ÉT afklarende spørgsmål først (fx "Lyser den orange lampe fast, eller blinker den?").
+- Er symptomet uklart, så stil ÉT afklarende spørgsmål først (fx "Lyser den orange lampe fast, eller blinker den?"). Spørg aldrig om noget, brugeren allerede har skrevet. Har brugeren fx skrevet "blinker", så gå direkte til svaret for blinkende lampe.
 - Afslut altid med et link til den guide, du bygger svaret på, i formatet [Guidens titel](#guide-id). Brug præcis id'et fra overskriften.
 - Får du et billede: beskriv kort, hvad du ser (lamper, fejlbeskeder, skærm), og brug det til at vælge guide. Er billedet uklart, bed om et nyt, taget tættere på. Vil brugeren vise noget på tablettens skærm, så foreslå et skærmbillede (tryk kort på Tænd/sluk og Lydstyrke ned samtidig) og knappen 🖼️.
 - Bed aldrig om, og gentag aldrig, kundenavne, adresser, koder eller adgangskoder. Sig venligt, at det ikke skal skrives her, hvis brugeren gør det.
@@ -57,10 +57,8 @@ ${guidesAsText()}`;
     <div class="ai-composer">
       <div class="ai-preview hidden" id="aiPreview"><img alt="" /><button type="button" class="ai-preview-remove" aria-label="Fjern billede">✕</button></div>
       <div class="ai-row">
-        <label class="ai-photo" title="Tag et billede med kameraet (fx printerens lamper)">
-          <input type="file" accept="image/*" capture="environment" hidden />
-          <span>📷</span>
-        </label>
+        <button type="button" class="ai-photo" id="aiCamera" title="Tag et billede med kameraet (fx printerens lamper)">📷</button>
+        <input type="file" id="aiCameraFile" accept="image/*" capture="environment" hidden />
         <label class="ai-photo" title="Vælg et skærmbillede eller et billede fra galleriet">
           <input type="file" accept="image/*" hidden />
           <span>🖼️</span>
@@ -74,8 +72,19 @@ ${guidesAsText()}`;
       </div>
     </div>`;
 
+  const camera = document.createElement('div');
+  camera.className = 'ai-camera hidden';
+  camera.innerHTML = `
+    <video autoplay playsinline muted></video>
+    <div class="ai-camera-bar">
+      <button type="button" class="ai-camera-cancel">Luk</button>
+      <button type="button" class="ai-camera-shoot" aria-label="Tag billede"></button>
+      <button type="button" class="ai-camera-flip" title="Skift kamera">🔄</button>
+    </div>`;
+
   document.body.appendChild(fab);
   document.body.appendChild(sheet);
+  document.body.appendChild(camera);
 
   const messagesEl = sheet.querySelector('#aiMessages');
   const input = sheet.querySelector('#aiInput');
@@ -100,6 +109,7 @@ ${guidesAsText()}`;
     setTimeout(() => input.focus(), 50);
   }
   function close() {
+    closeCamera();
     sheet.classList.add('hidden');
     fab.classList.remove('hidden');
     document.body.classList.remove('ai-open');
@@ -179,6 +189,54 @@ ${guidesAsText()}`;
     fi.value = '';
     attachFile(file);
   }));
+  /* ---------- Kamera i siden (virker også hvor filvælgeren ikke kan åbne kameraet) ---------- */
+  const video = camera.querySelector('video');
+  const cameraFile = sheet.querySelector('#aiCameraFile');
+  let stream = null;
+  let facing = 'environment';
+
+  async function openCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cameraFile.click(); return; }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1600 } }, audio: false });
+      video.srcObject = stream;
+      camera.classList.remove('hidden');
+    } catch (err) {
+      // Ingen tilladelse eller intet kamera: brug systemets filvælger/kamera i stedet
+      console.warn('Marvin: kamera kunne ikke åbnes (' + err.name + '), bruger filvælger');
+      closeCamera();
+      cameraFile.click();
+    }
+  }
+  function closeCamera() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
+    camera.classList.add('hidden');
+  }
+  function shoot() {
+    if (!video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, MAX_IMAGE_PX / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    pendingImage = { mime: 'image/jpeg', data: dataUrl.split(',')[1], dataUrl };
+    previewImg.src = dataUrl;
+    preview.classList.remove('hidden');
+    closeCamera();
+    input.focus();
+  }
+  sheet.querySelector('#aiCamera').addEventListener('click', openCamera);
+  camera.querySelector('.ai-camera-cancel').addEventListener('click', closeCamera);
+  camera.querySelector('.ai-camera-shoot').addEventListener('click', shoot);
+  camera.querySelector('.ai-camera-flip').addEventListener('click', async () => {
+    facing = facing === 'environment' ? 'user' : 'environment';
+    closeCamera();
+    await openCamera();
+  });
+  cameraFile.addEventListener('change', () => { const f = cameraFile.files && cameraFile.files[0]; cameraFile.value = ''; attachFile(f); });
+
   // Indsæt skærmbillede med Ctrl+V (pc/tablet med tastatur)
   input.addEventListener('paste', e => {
     const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
