@@ -27,10 +27,16 @@
   }
 
   /* ---------- Knapper ---------- */
+  // Appens indlejrede browser kan ikke åbne tel:-links. Dér kopierer et tryk nummeret i stedet.
+  function phoneHtml(label) {
+    return IN_APP_WEBVIEW
+      ? `<button type="button" class="contact-phone contact-phone-copy" title="Kopiér nummeret">${label}</button>`
+      : `<a class="contact-phone" href="tel:${phone}">${label}</a>`;
+  }
   // Desktop: i guidens titelbjælke (erstatter den passive "IT-Support • nummer"-chip)
   const chip = document.querySelector('.helper-chip');
   if (chip) {
-    chip.innerHTML = `<a class="contact-phone" href="tel:${phone}">IT-Support ${phone}</a><button type="button" class="contact-open">✉ Skriv til IT-support</button>`;
+    chip.innerHTML = phoneHtml('IT-Support ' + phone) + `<button type="button" class="contact-open">✉ Skriv til IT-support</button>`;
     chip.classList.add('helper-chip-contact');
   }
   // Mobil/tablet: i oversigten under søgefeltet
@@ -38,8 +44,30 @@
   if (asideTop) {
     const row = document.createElement('div');
     row.className = 'contact-row';
-    row.innerHTML = `<a class="contact-phone" href="tel:${phone}">📞 ${phone}</a><button type="button" class="btn soft contact-open">✉ Skriv til IT-support</button>`;
+    row.innerHTML = phoneHtml('📞 ' + phone) + `<button type="button" class="btn soft contact-open">✉ Skriv til IT-support</button>`;
     asideTop.appendChild(row);
+  }
+  document.querySelectorAll('.contact-phone-copy').forEach(btn => {
+    const label = btn.textContent;
+    btn.addEventListener('click', async () => {
+      let copied = false;
+      try { await navigator.clipboard.writeText(phone); copied = true; } catch (_) {}
+      btn.textContent = copied ? '✓ Kopieret: ' + phone : phone;
+      btn.classList.add('copied');
+      showToast(copied
+        ? `Nummeret ${phone} er kopieret. Åbn Telefon-appen, og sæt det ind, eller tast det.`
+        : `Ring til IT-support på ${phone} fra Telefon-appen.`);
+      setTimeout(() => { btn.textContent = label; btn.classList.remove('copied'); }, 4000);
+    });
+  });
+  let toastTimer = null;
+  function showToast(text) {
+    let t = document.querySelector('.contact-toast');
+    if (!t) { t = document.createElement('div'); t.className = 'contact-toast'; document.body.appendChild(t); }
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
   }
 
   /* ---------- Formular ---------- */

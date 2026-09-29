@@ -500,6 +500,17 @@
       border-top:1px solid var(--hairline);
     }
     .contact-row .contact-phone{color:var(--text);font-size:14px}
+    .contact-phone-copy{border:0;background:none;cursor:pointer;padding:0;font:inherit;font-weight:800}
+    .contact-phone-copy.copied{color:var(--ok)}
+    .helper-chip-contact .contact-phone-copy{color:inherit}
+    .contact-toast{
+      position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(10px);
+      z-index:80;max-width:calc(100vw - 32px);
+      background:var(--text);color:#fff;font-size:14px;font-weight:600;
+      padding:12px 16px;border-radius:14px;box-shadow:0 8px 24px rgba(19,41,61,.3);
+      opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;
+    }
+    .contact-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .contact-row .btn{padding:9px 14px;font-size:13px}
     .contact-sheet{
       position:fixed;inset:0;z-index:70;
