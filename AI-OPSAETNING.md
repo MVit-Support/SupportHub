@@ -29,7 +29,7 @@ Vil du teste lokalt fra din egen computer, så tilføj også `http://localhost:*
 
 ```js
 window.MV_AI = {
-  apiKey: 'AIza...',            // nøglen fra trin 1
+  apiKey: 'AQ....',             // nøglen fra trin 1 (nye nøgler starter med AQ., ældre med AIza)
   model: 'gemini-2.5-flash',    // stabil. 'gemini-3.8-flash' er nyere, men ofte overbelastet på gratis-niveauet
   supportPhone: '23905042',
   supportEmail: 'it@mvpolering.dk', // mail til knappen "Send til IT-support". Tom = knappen skjules
@@ -49,6 +49,31 @@ Upload hele mappen til GitHub. Tabletterne henter den nye version ved næste åb
 
 Slet nøglen i Google Cloud Console, opret en ny, og sæt den ind i `ai-config.js`. Der løber ingen regning på gratis-niveauet.
 
-## Senere: flyt nøglen bag en mellemstation
+## Anbefalet: mellemstation på Cloudflare Workers (nøglen ude af GitHub)
 
-Vil I på et tidspunkt gemme nøglen helt væk (fx på Cloudflare Workers eller bag Tailscale Funnel), så peg `endpoint` på mellemstationens adresse og lad `apiKey` være en vilkårlig tekst (den skal blot ikke være tom). Mellemstationen sætter så selv den rigtige nøgle på, før den kalder Google. Resten af siden skal ikke ændres.
+GitHub blokerer med rette, når en nøgle lægges i et offentligt repo. Med en Worker ligger nøglen kun hos Cloudflare, og siden kalder Workeren i stedet for Google. Det tager ca. 10 minutter og er gratis.
+
+1. Opret en konto på https://dash.cloudflare.com (gratis-planen rækker).
+2. Vælg **Workers & Pages** > **Create** > **Create Worker**. Giv den navnet `marvin`, og tryk **Deploy**.
+3. Tryk **Edit code**, slet indholdet, og indsæt hele filen `worker/marvin-proxy.js` fra denne mappe. Tryk **Deploy**.
+4. Gå til Workerens **Settings** > **Variables and Secrets** > **Add**:
+   - Type **Secret**, navn `GEMINI_API_KEY`, værdi = din Gemini-nøgle. Nye nøgler fra Google starter med `AQ.`, ældre med `AIza`. Begge virker, da Workeren sender nøglen i headeren `x-goog-api-key`.
+   - Type **Text**, navn `ALLOWED_ORIGINS`, værdi `https://mvit-support.github.io`.
+   Gem. Workeren genstarter selv.
+5. Kopiér Workerens adresse fra oversigten, fx `https://marvin.dit-navn.workers.dev`.
+6. I `ai-config.js`:
+
+```js
+  apiKey: 'worker',   // må ikke være tom, men bruges ikke. Nøglen ligger i Workeren.
+  endpoint: 'https://marvin.dit-navn.workers.dev/{model}',
+```
+
+7. Upload. Der ligger nu ingen nøgle i GitHub, så push-beskyttelsen slår ikke til.
+
+Nøglen behøver ikke website-låsning i Google, da den aldrig forlader Cloudflare. Behold gerne API-begrænsningen til Generative Language API.
+
+Test lokalt: tilføj `,http://localhost:8765` til `ALLOWED_ORIGINS` (uden mellemrum efter kommaet).
+
+## Alternativ uden mellemstation: nøglen indsættes ved udgivelse
+
+Vil I ikke have en Worker, kan nøglen ligge som en GitHub Actions-secret og skrives ind i `ai-config.js` under udgivelsen af Pages. Nøglen er så ikke i git, men den er stadig synlig for alle, der åbner sidens kildekode, og skal derfor være låst til `https://mvit-support.github.io/*` og til Generative Language API. Løsningen med Worker er sikrere.

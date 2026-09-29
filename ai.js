@@ -8,6 +8,8 @@
   const guides = window.RAW_GUIDES || [];
   if (!cfg.apiKey || !guides.length) return;
 
+  // Kører siden i en apps indlejrede browser (Android WebView)? Så kan kameraet ikke åbnes herfra.
+  const IN_APP_WEBVIEW = /; wv\)/.test(navigator.userAgent) || /\bwv\b/.test(navigator.userAgent);
   const MAX_HISTORY = 12;      // beskeder der sendes med som kontekst
   const MAX_IMAGE_PX = 1024;   // billeder skaleres ned før afsendelse
   const MAX_TURNS_WITH_IMAGE = 2;
@@ -104,7 +106,9 @@ ${guidesAsText()}`;
     fab.classList.add('hidden');
     document.body.classList.add('ai-open');
     if (!messagesEl.children.length) {
-      addMessage('model', 'Hej, jeg er Marvin. Skriv hvad der driller, eller send et billede: 📷 tager et foto af fx printerens lamper, 🖼️ vælger et skærmbillede fra tabletten.\n\n**Tip:** Tag et skærmbillede ved at trykke kort på Tænd/sluk og Lydstyrke ned samtidig.');
+      addMessage('model', IN_APP_WEBVIEW
+        ? 'Hej, jeg er Marvin. Skriv hvad der driller, eller send et billede med 🖼️.\n\n**Billede af printeren:** Tag det først med tablettens Kamera-app, og vælg det så her med 🖼️.\n**Skærmbillede:** Tryk kort på Tænd/sluk og Lydstyrke ned samtidig, og vælg det med 🖼️.'
+        : 'Hej, jeg er Marvin. Skriv hvad der driller, eller send et billede: 📷 tager et foto af fx printerens lamper, 🖼️ vælger et skærmbillede fra tabletten.\n\n**Tip:** Tag et skærmbillede ved at trykke kort på Tænd/sluk og Lydstyrke ned samtidig.');
     }
     setTimeout(() => input.focus(), 50);
   }
@@ -195,7 +199,10 @@ ${guidesAsText()}`;
   let stream = null;
   let facing = 'environment';
 
+  const CAMERA_HINT = 'Inde fra MV-appen kan jeg ikke åbne kameraet direkte. Gør sådan:\n\n1. Gå til startskærmen, og åbn tablettens **Kamera**-app.\n2. Tag billedet af fx printerens lamper.\n3. Gå tilbage hertil, og tryk på 🖼️ for at vælge billedet.\n\nSkærmbilleder tages med Tænd/sluk og Lydstyrke ned samtidig og vælges også med 🖼️.';
+
   async function openCamera() {
+    if (IN_APP_WEBVIEW) { addMessage('model', CAMERA_HINT); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cameraFile.click(); return; }
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1600 } }, audio: false });
@@ -350,15 +357,16 @@ ${guidesAsText()}`;
   }
 
   async function callModel(model) {
-    const url = cfg.endpoint.replace('{model}', encodeURIComponent(model)) + '?key=' + encodeURIComponent(cfg.apiKey);
+    const url = cfg.endpoint.replace('{model}', encodeURIComponent(model));
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: history,
       generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
     };
+    // Nøglen sendes i header. Går kaldet via Workeren, ignorerer den headeren og bruger sin egen nøgle.
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.apiKey },
       body: JSON.stringify(body)
     });
     if (!res.ok) {
