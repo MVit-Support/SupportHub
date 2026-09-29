@@ -13,7 +13,7 @@
                 Skal ende uden skråstreg. {model} erstattes med modelnavnet.
 */
 window.MV_AI = {
-    apiKey: 'AQ.Ab8RN6LnwhwhXzfzJGlw1c-Le0lPyJEAZAQrWGeF002LCJL4Ig',
+    apiKey: '',
   model: 'gemini-2.5-flash',
   fallbackModel: 'gemini-3.5-flash',
   supportPhone: '23905042',
