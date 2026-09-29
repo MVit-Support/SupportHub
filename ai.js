@@ -344,7 +344,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
       const offerSearch = !web && reply.includes(SEARCH_MARK);
       reply = reply.split(SEARCH_MARK).join('').trim();
       addMessage('model', reply, null, { offerSearch, sources: result.sources, entryHtml: result.entryHtml });
-      transcript.push({ who: 'Marvin', text: reply + (result.sources && result.sources.length ? '\n(Kilder: ' + result.sources.map(x => x.uri).join(', ') + ')' : '') });
+      transcript.push({ who: 'Marvin', text: reply + (result.sources && result.sources.length ? '\n(Kilder fra nettet: ' + result.sources.map(x => x.title || 'link').slice(0, 3).join(', ') + ')' : '') });
       history.push({ role: 'model', parts: [{ text: reply }] });
     } catch (err) {
       console.error('Marvin:', err);
@@ -493,17 +493,84 @@ Teknisk info: ${err.status}: ${err.detail}` : '');
 Teknisk info: ${detail}` : '');
   }
 
-  /* ---------- Send til IT-support ---------- */
+  /* ---------- Send til IT-support ----------
+     1) Via Workeren (/ticket), som sender mailen. Virker overalt, også i appens indlejrede browser.
+     2) Ellers mailto: (kun i rigtige browsere).
+     3) Ellers kopieres teksten, så den kan sættes ind i Gmail. */
+  function ticketEndpoint() {
+    if (!cfg.endpoint || !cfg.endpoint.includes('{model}')) return null;
+    const base = cfg.endpoint.replace(/\/?\{model\}.*$/, '');
+    if (/googleapis\.com/.test(base)) return null; // direkte Google-kald: ingen Worker at sende via
+    return base + '/ticket';
+  }
+  function deviceInfo() {
+    const ua = navigator.userAgent;
+    const modelMatch = ua.match(/\b(SM-[A-Z0-9]+)\b/);
+    const androidMatch = ua.match(/Android\s+([\d.]+)/);
+    return (modelMatch ? modelMatch[1] : 'ukendt model') + (androidMatch ? ', Android ' + androidMatch[1] : '') + (IN_APP_WEBVIEW ? ' (via MV-appen)' : ' (via Chrome)');
+  }
+  function buildTicket(name) {
+    const lines = transcript.map(t => `${t.who}: ${t.text}`).join('\n\n');
+    const first = (transcript.find(t => t.who === 'Du') || { text: 'fejl' }).text;
+    const subject = 'Support fra tablet' + (name ? ' (' + name + ')' : '') + ': ' + first.slice(0, 60);
+    const body = `Hej IT-support\n\nJeg har brug for hjælp. Her er, hvad jeg har prøvet sammen med Marvin:\n\n${lines || '(ingen samtale endnu)'}\n\nNavn: ${name || '(ikke udfyldt)'}\nTablet: ${deviceInfo()}\nTid: ${new Date().toLocaleString('da-DK')}\n`;
+    return { subject, body };
+  }
+  async function sendTicket(name) {
+    const { subject, body } = buildTicket(name);
+    const url = ticketEndpoint();
+    if (url) {
+      try {
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, body, name }) });
+        if (res.ok) return { ok: true, how: 'worker' };
+        const detail = await res.text().catch(() => '');
+        console.warn('Marvin: ticket via Worker fejlede ' + res.status + ' ' + detail);
+      } catch (err) {
+        console.warn('Marvin: ticket via Worker fejlede', err);
+      }
+    }
+    if (!IN_APP_WEBVIEW && cfg.supportEmail) {
+      const short = body.length > 1500 ? body.slice(0, 1500) + '\n[forkortet]' : body;
+      location.href = `mailto:${encodeURIComponent(cfg.supportEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(short)}`;
+      return { ok: true, how: 'mailto' };
+    }
+    try {
+      await navigator.clipboard.writeText(`Til: ${cfg.supportEmail}\nEmne: ${subject}\n\n${body}`);
+      return { ok: false, how: 'clipboard' };
+    } catch (_) {
+      return { ok: false, how: 'none' };
+    }
+  }
   if (escalateBtn) {
     escalateBtn.addEventListener('click', () => {
-      const lines = transcript.map(t => `${t.who}: ${t.text}`).join('\n\n');
-      const ua = navigator.userAgent;
-      const modelMatch = ua.match(/\b(SM-[A-Z0-9]+)\b/);
-      const androidMatch = ua.match(/Android\s+([\d.]+)/);
-      const tablet = (modelMatch ? modelMatch[1] : 'ukendt model') + (androidMatch ? ', Android ' + androidMatch[1] : '');
-      const body = `Hej IT-support\n\nJeg har brug for hjælp. Her er, hvad jeg har prøvet sammen med Marvin:\n\n${lines || '(ingen samtale endnu)'}\n\nTablet: ${tablet}\nNavn: \n`;
-      const subject = 'Support fra tablet: ' + (transcript.find(t => t.who === 'Du') || { text: 'fejl' }).text.slice(0, 60);
-      location.href = `mailto:${encodeURIComponent(cfg.supportEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      if (sheet.querySelector('.ai-ticket-form')) return;
+      const el = document.createElement('div');
+      el.className = 'ai-msg ai-bot ai-ticket-form';
+      el.innerHTML = `
+        <p>Jeg sender samtalen til IT-support. Skriv dit navn, så de ved, hvem de skal ringe til:</p>
+        <input type="text" class="ai-ticket-name" placeholder="Dit navn" autocomplete="name" />
+        <div class="ai-ticket-actions">
+          <button type="button" class="ai-search-btn ai-ticket-send">Send til IT-support</button>
+          <button type="button" class="ai-ticket-cancel">Annullér</button>
+        </div>`;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      const nameInput = el.querySelector('.ai-ticket-name');
+      nameInput.focus();
+      el.querySelector('.ai-ticket-cancel').addEventListener('click', () => el.remove());
+      el.querySelector('.ai-ticket-send').addEventListener('click', async () => {
+        const btn = el.querySelector('.ai-ticket-send');
+        btn.disabled = true; btn.textContent = 'Sender…';
+        const name = nameInput.value.trim();
+        const result = await sendTicket(name);
+        el.remove();
+        const phone = cfg.supportPhone || '23905042';
+        if (result.how === 'worker') addMessage('model', `Sendt til IT-support${name ? ', ' + name : ''}. De har hele samtalen og vender tilbage. Haster det, så ring på ${phone}.`);
+        else if (result.how === 'mailto') addMessage('model', 'Jeg har åbnet en mail til IT-support med samtalen. Tryk send i mailprogrammet.');
+        else if (result.how === 'clipboard') addMessage('model', `Jeg kunne ikke sende automatisk, men samtalen er kopieret. Åbn Gmail, lav en ny mail til ${cfg.supportEmail}, og hold fingeren i tekstfeltet for at sætte ind. Eller ring på ${phone}.`);
+        else addMessage('model', `Jeg kunne ikke sende automatisk. Ring til IT-support på ${phone}.`);
+        transcript.push({ who: 'Marvin', text: '[henvendelse sendt til IT-support: ' + result.how + ']' });
+      });
     });
   }
 })();

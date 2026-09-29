@@ -74,6 +74,19 @@ Nøglen behøver ikke website-låsning i Google, da den aldrig forlader Cloudfla
 
 Test lokalt: tilføj `,http://localhost:8765` til `ALLOWED_ORIGINS` (uden mellemrum efter kommaet).
 
+## "Send til IT-support": mail via Workeren
+
+Knappen sender samtalen som mail til IT-support. Appens indlejrede browser kan ikke åbne mailprogrammer, så mailen sendes fra Workeren via et lille Google Apps Script, der bruger jeres egen Google-konto.
+
+1. Følg vejledningen i toppen af `worker/ticket-mail.gs` (Apps Script, ca. 5 minutter). Den giver dig en webapp-adresse, der slutter på `/exec`.
+2. I Cloudflare: Workeren `marvin` > Settings > Variables and Secrets. Tilføj:
+   - `TICKET_WEBHOOK` (Text) = webapp-adressen fra trin 1
+   - `TICKET_TO` (Text) = `it@mvpolering.dk`
+   - `TICKET_SECRET` (Secret) = samme tilfældige tekst, som du skrev ind i `ticket-mail.gs`
+3. Sørg for at Workeren kører den nyeste `worker/marvin-proxy.js` (Edit code > indsæt > Deploy).
+
+Mailen indeholder hele samtalen, pudserens navn, tabletmodel og Android-version. Er Workeren ikke sat op til mail, falder Marvin tilbage til at åbne Gmail (kun i Chrome) eller kopiere teksten, så den kan sættes ind manuelt.
+
 ## Alternativ uden mellemstation: nøglen indsættes ved udgivelse
 
 Vil I ikke have en Worker, kan nøglen ligge som en GitHub Actions-secret og skrives ind i `ai-config.js` under udgivelsen af Pages. Nøglen er så ikke i git, men den er stadig synlig for alle, der åbner sidens kildekode, og skal derfor være låst til `https://mvit-support.github.io/*` og til Generative Language API. Løsningen med Worker er sikrere.
