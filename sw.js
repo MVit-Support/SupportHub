@@ -1,10 +1,11 @@
-const CACHE_NAME = 'mv-polering-support-v11';
+const CACHE_NAME = 'mv-polering-support-v12';
 const APP_SHELL = [
   './',
   './index.html',
   './guides.js',
   './ai-config.js',
   './ai.js',
+  './contact.js',
   './manifest.webmanifest',
   './mv-polering-logo.png',
   './icon-192.png',

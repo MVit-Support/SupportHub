@@ -45,14 +45,19 @@ export default {
     // /ticket: "Send til IT-support". Sendes videre til TICKET_WEBHOOK (Google Apps Script), som mailer til TICKET_TO.
     if (path === 'ticket') {
       if (!env.TICKET_WEBHOOK) return json({ error: { code: 501, message: 'TICKET_WEBHOOK er ikke sat op i Workeren' } }, 501, cors);
+      const rawTicket = await request.text();
+      if (rawTicket.length > 8_000_000) return json({ error: { code: 413, message: 'Beskeden er for stor (max ca. 3 billeder)' } }, 413, cors);
       let ticket;
-      try { ticket = await request.json(); } catch (_) { return json({ error: { code: 400, message: 'Ugyldig JSON' } }, 400, cors); }
+      try { ticket = JSON.parse(rawTicket); } catch (_) { return json({ error: { code: 400, message: 'Ugyldig JSON' } }, 400, cors); }
       const subject = String(ticket.subject || 'Support fra tablet').slice(0, 200);
       const body = String(ticket.body || '').slice(0, 20000);
+      const attachments = (Array.isArray(ticket.attachments) ? ticket.attachments : []).slice(0, 3)
+        .filter(a => a && typeof a.data === 'string' && /^image\//.test(a.mimeType || ''))
+        .map((a, i) => ({ name: String(a.name || ('billede-' + (i + 1) + '.jpg')).slice(0, 80), mimeType: a.mimeType, data: a.data }));
       const hook = await fetch(env.TICKET_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: env.TICKET_TO || '', subject, body, secret: env.TICKET_SECRET || '' }),
+        body: JSON.stringify({ to: env.TICKET_TO || '', subject, body, attachments, secret: env.TICKET_SECRET || '' }),
         redirect: 'follow' // Apps Script svarer med en redirect
       });
       const text = await hook.text();

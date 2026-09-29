@@ -651,7 +651,10 @@ Teknisk info: ${detail}` : '');
     const url = ticketEndpoint();
     if (url) {
       try {
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, body, name }) });
+        // De seneste billeder fra samtalen sendes med som bilag
+        const attachments = history.flatMap(t => t.parts.filter(p => p.inlineData)).slice(-2)
+          .map((p, i) => ({ name: 'marvin-billede-' + (i + 1) + '.jpg', mimeType: p.inlineData.mimeType, data: p.inlineData.data }));
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, body, name, attachments }) });
         if (res.ok) return { ok: true, how: 'worker' };
         const detail = await res.text().catch(() => '');
         console.warn('Marvin: ticket via Worker fejlede ' + res.status + ' ' + detail);

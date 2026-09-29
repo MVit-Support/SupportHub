@@ -14,11 +14,21 @@
   5. Kopiér webapp-adressen (slutter på /exec), og sæt den som variablen TICKET_WEBHOOK i Workeren.
      Sæt også TICKET_TO = it@mvpolering.dk i Workeren.
 
-  Ændrer du koden senere, skal du lave en ny udrulning, før ændringen virker.
+  Afsender: Mailen sendes fra den konto, du er logget ind med, når du udruller. Skal den komme fra
+  it@mvpolering.dk, så log ind som it@mvpolering.dk, når du laver projektet, eller sæt it@mvpolering.dk op som
+  "Send mail som"-alias i din egen Gmail og lad FROM stå. Scriptet bruger aliaset, hvis det findes.
+
+  Ændrer du koden senere, skal du lave en ny udrulning, før ændringen virker:
+  Udrul > Administrer udrulninger > blyanten ved den aktive udrulning > Version: "Ny version" > Udrul.
+  Webapp-adressen forbliver den samme.
 */
 
 const SECRET = 'SKIFT-MIG-TIL-EN-LANG-TILFAELDIG-TEKST';
 const DEFAULT_TO = 'it@mvpolering.dk';
+// Afsender. Mailen sendes fra den konto, scriptet er udrullet fra. Er FROM en anden adresse, virker det kun,
+// hvis FROM er sat op som "Send mail som"-alias i den kontos Gmail. Ellers bruges kontoens egen adresse.
+const FROM = 'it@mvpolering.dk';
+const SENDER_NAME = 'Marvin (MV Support)';
 
 function doPost(e) {
   try {
@@ -29,7 +39,18 @@ function doPost(e) {
     const to = data.to || DEFAULT_TO;
     const subject = String(data.subject || 'Support fra tablet').slice(0, 200);
     const body = String(data.body || '').slice(0, 20000);
-    MailApp.sendEmail({ to: to, subject: subject, body: body, name: 'Marvin (MV Support)' });
+    const attachments = (data.attachments || []).slice(0, 3).map(function (a, i) {
+      return Utilities.newBlob(Utilities.base64Decode(a.data), a.mimeType || 'image/jpeg', a.name || ('billede-' + (i + 1) + '.jpg'));
+    });
+    const me = (Session.getEffectiveUser().getEmail() || '').toLowerCase();
+    const opts = { name: SENDER_NAME };
+    if (attachments.length) opts.attachments = attachments;
+    if (FROM && FROM.toLowerCase() !== me) {
+      // Send som alias, hvis kontoen har det. GmailApp kræver, at du godkender adgang til Gmail ved udrulning.
+      const aliases = GmailApp.getAliases().map(function (a) { return a.toLowerCase(); });
+      if (aliases.indexOf(FROM.toLowerCase()) !== -1) opts.from = FROM;
+    }
+    GmailApp.sendEmail(to, subject, body, opts);
     return ContentService.createTextOutput('ok');
   } catch (err) {
     return ContentService.createTextOutput('error: ' + err);
