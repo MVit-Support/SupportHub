@@ -105,8 +105,22 @@ async function proxyLive(request, env) {
   const [client, server] = Object.values(pair);
   server.accept();
 
-  server.addEventListener('message', e => { try { upstream.send(e.data); } catch (_) {} });
-  upstream.addEventListener('message', e => { try { server.send(e.data); } catch (_) {} });
+  // Binære pakker kan komme som Blob; de skal konverteres til ArrayBuffer, ellers sendes teksten "[object Blob]".
+  // En kø sikrer, at pakkerne bliver sendt videre i samme rækkefølge, som de kom.
+  const forward = (to) => {
+    let queue = Promise.resolve();
+    return (e) => {
+      queue = queue.then(async () => {
+        let data = e.data;
+        if (data && typeof data !== 'string' && !(data instanceof ArrayBuffer) && typeof data.arrayBuffer === 'function') {
+          data = await data.arrayBuffer();
+        }
+        to.send(data);
+      }).catch(() => {});
+    };
+  };
+  server.addEventListener('message', forward(upstream));
+  upstream.addEventListener('message', forward(server));
   const closeBoth = (code, reason) => {
     try { server.close(code, reason); } catch (_) {}
     try { upstream.close(code, reason); } catch (_) {}

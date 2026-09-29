@@ -456,10 +456,11 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
   /* ---------- Live API (WebSocket) som reserve ----------
      Live-modellerne har ikke det lille dagsloft. De nyeste svarer kun med lyd, men kan levere en tekstudskrift,
      så vi beder om den og smider lyden væk. Billeder sendes som en enkelt videoframe. */
+  // Live-modellerne svarer kun med lyd (TEXT afvises), så vi bruger altid tekstudskriften.
   const DEFAULT_LIVE_MODELS = [
-    { model: 'gemini-3.1-flash-live-preview', text: true },
     { model: 'gemini-3.8-live', text: false },
-    { model: 'gemini-3.8-live-extended-thinking', text: false }
+    { model: 'gemini-3.1-flash-live-preview', text: false },
+    { model: 'gemini-3.8-live-extended-thinking', text: false, thinking: 'low' }
   ];
   function liveModelChain() {
     return Array.isArray(cfg.liveModels) && cfg.liveModels.length ? cfg.liveModels : DEFAULT_LIVE_MODELS;
@@ -514,6 +515,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
           }
         };
         if (!entry.text) setup.setup.outputAudioTranscription = {};
+        if (entry.thinking) setup.setup.generationConfig.thinkingConfig = { thinkingLevel: entry.thinking };
         ws.send(JSON.stringify(setup));
       };
       ws.onmessage = async (ev) => {
