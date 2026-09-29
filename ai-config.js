@@ -10,6 +10,8 @@
   fallbackModel Reservemodel, hvis den første fejler (fx findes ikke eller er overbelastet). Standard: 'gemini-2.5-flash'.
   searchModel   Model til websøgning (knappen "Søg på nettet"). Gemini 3-modellerne har 5.000 gratis søgninger/md.
                 Standard: 'gemini-3.8-flash', derefter prøves 'gemini-3.5-flash' og de øvrige.
+  models        Liste over gratis-modeller, Marvin hopper imellem, når dagsloftet (ca. 20 kald/model/dag) er nået.
+                Rækkefølgen er prioriteringen. Udelad linjen for at bruge Marvins standardliste.
   supportPhone  Vises i svar, når guiderne ikke dækker.
   supportEmail  Bruges af knappen "Send til IT-support". Tom streng = knappen skjules.
   endpoint      Adressen på jeres Cloudflare Worker + '/{model}'. {model} erstattes med modelnavnet.
@@ -20,6 +22,10 @@ window.MV_AI = {
   model: 'gemini-2.5-flash',
   fallbackModel: 'gemini-3.5-flash',
   searchModel: 'gemini-3.8-flash',
+  models: [
+    'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash',
+    'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'
+  ],
   supportPhone: '23905042',
   supportEmail: 'it@mvpolering.dk',
   endpoint: 'https://marvin.stefan-2f1.workers.dev/{model}'

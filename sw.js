@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mv-polering-support-v10';
+const CACHE_NAME = 'mv-polering-support-v11';
 const APP_SHELL = [
   './',
   './index.html',
@@ -45,7 +45,8 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('.js');
   if (isHtml) {
     event.respondWith(
-      fetch(event.request).then(response => {
+      // cache:'no-cache' = spørg altid serveren om der er en nyere version, i stedet for at tage browserens HTTP-cache
+      fetch(event.request, { cache: 'no-cache' }).then(response => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         return response;

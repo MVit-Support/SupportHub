@@ -373,12 +373,46 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
     }
   }
 
-  // Kæde af modeller: den valgte, reserven og to sikre gratis-modeller. Hver prøves op til 2 gange ved 503.
+  /* ---------- Modelkæde ----------
+     Gratis-niveauet har et lille dagsloft PR. MODEL. Marvin hopper derfor videre til næste model,
+     når én er brugt op, og husker på denne tablet, hvilke modeller der er opbrugt i dag.
+     Googles dagsloft nulstilles kl. 09 dansk tid (midnat i Californien). */
+  const DEFAULT_FREE_MODELS = [
+    'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash',
+    'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'
+  ];
+  const EXHAUSTED_KEY = 'marvin-exhausted';
+
+  function quotaDay() { // dato i Californien, hvor Googles døgn skifter
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date()); }
+    catch (_) { return new Date().toISOString().slice(0, 10); }
+  }
+  function exhaustedToday() {
+    try {
+      const data = JSON.parse(localStorage.getItem(EXHAUSTED_KEY) || '{}');
+      return data.day === quotaDay() ? (data.models || []) : [];
+    } catch (_) { return []; }
+  }
+  function markExhausted(model) {
+    try {
+      const list = exhaustedToday();
+      if (!list.includes(model)) list.push(model);
+      localStorage.setItem(EXHAUSTED_KEY, JSON.stringify({ day: quotaDay(), models: list }));
+    } catch (_) {}
+  }
   function modelChain(opts = {}) {
+    const configured = Array.isArray(cfg.models) && cfg.models.length ? cfg.models : DEFAULT_FREE_MODELS;
     const chain = opts.web
-      ? [cfg.searchModel, 'gemini-3.8-flash', 'gemini-3.5-flash', cfg.model, cfg.fallbackModel, 'gemini-2.5-flash']
-      : [cfg.model, cfg.fallbackModel, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-    return chain.filter((m, i) => m && chain.indexOf(m) === i);
+      ? [cfg.searchModel, 'gemini-3.8-flash', 'gemini-3.5-flash', cfg.model, cfg.fallbackModel, ...configured]
+      : [cfg.model, cfg.fallbackModel, ...configured];
+    const unique = chain.filter((m, i) => m && chain.indexOf(m) === i);
+    const used = exhaustedToday();
+    return [...unique.filter(m => !used.includes(m)), ...unique.filter(m => used.includes(m))];
+  }
+  // 429 med "limit: 20" = dagsloft (husk til i morgen). "limit: 5" = minutloft (spring bare videre).
+  function isDailyQuota(err) {
+    const m = /limit:\s*(\d+)/i.exec(err.detail || '');
+    return m ? Number(m[1]) >= 10 : /per day|daily|_requests\b/i.test(err.detail || '');
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -391,8 +425,12 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
         } catch (err) {
           lastErr = err;
           if (err instanceof TypeError || err.status === 400 || err.status === 403) throw err; // giver ikke mening at prøve andre modeller
-          if (err.status === 429 && !opts.web) throw err; // almindelig kvote er fælles, men søgekvoten er pr. model
-          if (err.status === 429) break; // websøgning: næste model
+          if (err.status === 429) { // kvote pr. model: husk hvis dagsloft, og prøv næste model
+            if (isDailyQuota(err)) markExhausted(model);
+            err.triedAll = true;
+            break;
+          }
+          if (err.status === 404) break; // modellen findes ikke på denne konto: næste
           console.warn('Marvin: ' + model + ' fejlede (' + err.status + ')' + (attempt === 0 && err.status === 503 ? ', prøver igen om 1,5 s' : ''));
           if (err.status === 503 && attempt === 0) { await sleep(1500); continue; }
           break; // næste model
@@ -442,7 +480,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
   function friendlyError(err) {
     const phone = cfg.supportPhone || '23905042';
     if (err.status === 429 && err.web) return 'Websøgningen er brugt op for i dag hos Google, så Marvin kan ikke søge lige nu. Ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
-    if (err.status === 429) return 'Marvin er optaget lige nu. Prøv igen om et minut, eller find guiden i oversigten.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
+    if (err.status === 429) return 'Alle gratis-modeller er brugt op for i dag, så Marvin kan ikke svare før kl. 09 i morgen. Find guiden i oversigten, eller ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
     if (err.status === 503) return 'Googles servere er overbelastede lige nu, så Marvin kan ikke svare. Prøv igen om et par minutter, eller find guiden i oversigten.';
     if (err.status === 400 || err.status === 403 || err.status === 404) return `Marvin er ikke sat rigtigt op (nøgle, adresse eller modelnavn). Brug guiderne i oversigten, eller ring til IT-support på ${phone}.` + (err.detail ? `
 
