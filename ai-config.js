@@ -18,6 +18,9 @@
                 Test reserven med ?marvin=live i adressen.
   supportPhone  Vises i svar, når guiderne ikke dækker.
   supportEmail  Bruges af knappen "Send til IT-support". Tom streng = knappen skjules.
+  openInChrome  true/false. Inde i MV-appens browser vises en bjælke "Åbn i Chrome", og siden forsøger selv at
+                åbne Chrome én gang pr. åbning (openInChromeAuto). Virker kun, hvis appens browser giver
+                intent-adresser videre til Android. Standard: true.
   tagline       Den lille undertekst i chattens blå bjælke.
   greetings     Liste af velkomster. Marvin vælger én tilfældigt, hver gang chatten åbnes.
   persona       Marvins personlighed, skrevet som instruktion til ham. Udelad for at bruge standarden
@@ -41,6 +44,8 @@ window.MV_AI = {
   ],
   supportPhone: '23905042',
   supportEmail: 'it@mvpolering.dk',
+  openInChrome: true,
+  openInChromeAuto: true,
   tagline: 'MV Polerings support-robot. Har set det hele. Hjælper alligevel.',
   greetings: [
     'Marvin her. Jeg har set alle printerfejl, der findes, og et par stykker, der ikke burde findes. Hvad driller?',

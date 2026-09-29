@@ -578,6 +578,24 @@
       .contact-box{border-radius:22px 22px 0 0}
     }
 
+    /* ---------- "Åbn i Chrome"-bjælke (kun i appens indlejrede browser) ---------- */
+    .chrome-bar{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px 10px 16px;
+      background:var(--warn-bg);
+      color:var(--text);
+      font-size:13px;
+      line-height:1.35;
+    }
+    .chrome-bar-text{flex:1;min-width:0}
+    .chrome-bar-open{
+      border:0;background:var(--accent);color:#fff;
+      font-weight:700;font-size:13px;padding:8px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
+    }
+    .chrome-bar-close{
+      border:0;background:none;color:var(--muted);font-size:15px;cursor:pointer;padding:4px 6px;
+    }
+
     body.embed header{display:none}
 
     /* ---------- AI-hjælper ---------- */
@@ -853,7 +871,7 @@
     }
 
     @media print{
-      header,aside,footer,.back-btn,.helper-chip,.ai-fab,.ai-sheet,.contact-sheet,.contact-row{display:none}
+      header,aside,footer,.back-btn,.helper-chip,.ai-fab,.ai-sheet,.contact-sheet,.contact-row,.chrome-bar{display:none}
       .wrap{display:block;padding:0}
       main.panel{box-shadow:none;min-height:auto}
       body,html{background:#fff}
@@ -1178,5 +1196,6 @@
   </script>
   <script src="./ai.js"></script>
   <script src="./contact.js"></script>
+  <script src="./open-in-chrome.js"></script>
 </body>
 </html>
