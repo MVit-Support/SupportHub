@@ -74,6 +74,18 @@ Nøglen behøver ikke website-låsning i Google, da den aldrig forlader Cloudfla
 
 Test lokalt: tilføj `,http://localhost:8765` til `ALLOWED_ORIGINS` (uden mellemrum efter kommaet).
 
+## Gratis-niveauets dagsloft og reserverne
+
+Googles gratis-niveau giver kun ca. 20 kald pr. model pr. dag. Marvin håndterer det i tre lag:
+
+1. **Modelrotation.** Listen `models` i `ai-config.js` er ti gratis-modeller. Rammer én dagsloftet, hopper Marvin til den næste og husker på tabletten, at modellen er brugt op indtil kl. 09 (Googles døgnskifte).
+2. **Live-reserven.** Er alle modeller brugt op, skifter Marvin til Live-API'et (listen `liveModels`), som ikke har dagsloft men et loft på tokens pr. minut. Det kører via Workerens `/live/{model}`-WebSocket. De nyeste Live-modeller svarer med lyd; Marvin bruger tekstudskriften og smider lyden væk, så svaret er lidt mere "talt" i stilen. Svar herfra er mærket "(svar via reservemodel)".
+3. **Ærlig besked.** Svarer heller ikke reserven, siger Marvin, at han kan igen fra kl. 09, og henviser til guiderne og IT-support.
+
+Test Live-reserven direkte ved at åbne siden med `?marvin=live` bagpå adressen, fx `https://mvit-support.github.io/SupportHub/?marvin=live`.
+
+Vil I slippe for lofterne helt, så slå betaling til på Gemini-projektet (ca. 5 øre pr. spørgsmål). Så kan `models`-listen kortes ned til én model.
+
 ## "Send til IT-support": mail via Workeren
 
 Knappen sender samtalen som mail til IT-support. Appens indlejrede browser kan ikke åbne mailprogrammer, så mailen sendes fra Workeren via et lille Google Apps Script, der bruger jeres egen Google-konto.

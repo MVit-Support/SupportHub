@@ -147,6 +147,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
     for (let line of lines) {
       line = line
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|\s)_([^_]+)_(?=\s|$)/g, '$1<em class="ai-note">$2</em>')
         .replace(/\[([^\]]+)\]\(#([a-z0-9-]+)\)/g, (m, t, id) => `<a href="#${id}" class="ai-guide-link">${escapeHtml(guideTitle(id))}</a>`)
         .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, url) => `<a href="${url}" class="ai-ext-link" target="_blank" rel="noopener">${t}</a>`);
       const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
@@ -418,7 +419,8 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
 
   async function askGemini(opts = {}) {
     let lastErr = null;
-    for (const model of modelChain(opts)) {
+    const forceLive = /[?&]marvin=live\b/.test(location.search); // til test: tving Live-reserven
+    if (!forceLive) for (const model of modelChain(opts)) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           return await callModel(model, opts);
@@ -437,7 +439,111 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
         }
       }
     }
+    // Alle almindelige gratis-modeller brugt op (429) eller test-tilstand: prøv Live-API'et, som ikke har dagsloft
+    if (!opts.web && (forceLive || (lastErr && lastErr.status === 429))) {
+      for (const model of liveModelChain()) {
+        try {
+          return await callLive(model);
+        } catch (err) {
+          console.warn('Marvin: Live-model ' + model + ' fejlede', err);
+          lastErr = lastErr && lastErr.status === 429 && !forceLive ? lastErr : err;
+        }
+      }
+    }
     throw lastErr;
+  }
+
+  /* ---------- Live API (WebSocket) som reserve ----------
+     Live-modellerne har ikke det lille dagsloft. De nyeste svarer kun med lyd, men kan levere en tekstudskrift,
+     så vi beder om den og smider lyden væk. Billeder sendes som en enkelt videoframe. */
+  const DEFAULT_LIVE_MODELS = [
+    { model: 'gemini-3.1-flash-live-preview', text: true },
+    { model: 'gemini-3.8-live', text: false },
+    { model: 'gemini-3.8-live-extended-thinking', text: false }
+  ];
+  function liveModelChain() {
+    return Array.isArray(cfg.liveModels) && cfg.liveModels.length ? cfg.liveModels : DEFAULT_LIVE_MODELS;
+  }
+  function liveUrl(model) {
+    if (cfg.liveEndpoint) return cfg.liveEndpoint.replace('{model}', encodeURIComponent(model));
+    const base = (cfg.endpoint || '').replace(/\/?\{model\}.*$/, '');
+    if (/googleapis\.com/.test(base)) { // direkte til Google (uden Worker)
+      return 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' + encodeURIComponent(cfg.apiKey);
+    }
+    return base.replace(/^http/, 'ws') + '/live/' + encodeURIComponent(model);
+  }
+  function historyForLive() {
+    // Live: tekst-ture som kontekst; kun det seneste billede sendes (som videoframe)
+    let image = null;
+    const turns = history.map(turn => {
+      const parts = turn.parts.filter(p => p.text).map(p => ({ text: p.text }));
+      const img = turn.parts.find(p => p.inlineData);
+      if (img && turn === history[history.length - 1]) image = img.inlineData;
+      else if (img) parts.push({ text: '[billede vedhæftet]' });
+      return { role: turn.role, parts: parts.length ? parts : [{ text: '…' }] };
+    });
+    return { turns, image };
+  }
+  function callLive(entry) {
+    const model = entry.model;
+    return new Promise((resolve, reject) => {
+      let ws;
+      try { ws = new WebSocket(liveUrl(model)); } catch (err) { reject(err); return; }
+      ws.binaryType = 'arraybuffer';
+      let text = '';
+      let done = false;
+      const finish = (err) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        try { ws.close(); } catch (_) {}
+        if (err) reject(err);
+        else if (text.trim()) resolve({ text: text.trim() + '\n\n_(svar via reservemodel)_', sources: [], entryHtml: null });
+        else { const e = new Error('empty'); e.status = 'empty'; reject(e); }
+      };
+      const timer = setTimeout(() => finish(Object.assign(new Error('timeout'), { status: 'timeout' })), 60000);
+
+      ws.onopen = () => {
+        const setup = {
+          setup: {
+            model: 'models/' + model,
+            generationConfig: entry.text
+              ? { responseModalities: ['TEXT'], temperature: 0.3 }
+              : { responseModalities: ['AUDIO'], temperature: 0.3 },
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+          }
+        };
+        if (!entry.text) setup.setup.outputAudioTranscription = {};
+        ws.send(JSON.stringify(setup));
+      };
+      ws.onmessage = async (ev) => {
+        let raw = ev.data;
+        if (raw instanceof ArrayBuffer) raw = new TextDecoder().decode(raw);
+        else if (raw instanceof Blob) raw = await raw.text();
+        let msg;
+        try { msg = JSON.parse(raw); } catch (_) { return; }
+        if (msg.setupComplete) {
+          const { turns, image } = historyForLive();
+          if (image) ws.send(JSON.stringify({ realtimeInput: { video: { data: image.data, mimeType: image.mimeType } } }));
+          ws.send(JSON.stringify({ clientContent: { turns, turnComplete: true } }));
+          return;
+        }
+        const sc = msg.serverContent;
+        if (sc) {
+          if (sc.modelTurn && sc.modelTurn.parts) sc.modelTurn.parts.forEach(p => { if (p.text && !p.thought) text += p.text; });
+          if (sc.outputTranscription && sc.outputTranscription.text) text += sc.outputTranscription.text;
+          if (sc.turnComplete) finish();
+        }
+        if (msg.error) finish(Object.assign(new Error(msg.error.message || 'live error'), { status: msg.error.code || 'live', detail: msg.error.message }));
+      };
+      ws.onerror = () => finish(Object.assign(new Error('Live-forbindelse fejlede'), { status: 'live' }));
+      ws.onclose = (ev) => {
+        if (!done) {
+          if (text.trim()) finish();
+          else finish(Object.assign(new Error('Live lukkede: ' + ev.code + ' ' + (ev.reason || '')), { status: 'live', detail: ev.reason }));
+        }
+      };
+    });
   }
 
   async function callModel(model, opts = {}) {
@@ -480,7 +586,8 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
   function friendlyError(err) {
     const phone = cfg.supportPhone || '23905042';
     if (err.status === 429 && err.web) return 'Websøgningen er brugt op for i dag hos Google, så Marvin kan ikke søge lige nu. Ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
-    if (err.status === 429) return 'Alle gratis-modeller er brugt op for i dag, så Marvin kan ikke svare før kl. 09 i morgen. Find guiden i oversigten, eller ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
+    if (err.status === 429) return 'Alle gratis-modeller er brugt op for i dag, og reservemodellen svarede ikke. Marvin kan svare igen fra kl. 09 i morgen. Find guiden i oversigten, eller ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
+    if (err.status === 'live' || err.status === 'timeout') return 'Reservemodellen svarede ikke. Prøv igen, find guiden i oversigten, eller ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: ' + err.detail : '');
     if (err.status === 503) return 'Googles servere er overbelastede lige nu, så Marvin kan ikke svare. Prøv igen om et par minutter, eller find guiden i oversigten.';
     if (err.status === 400 || err.status === 403 || err.status === 404) return `Marvin er ikke sat rigtigt op (nøgle, adresse eller modelnavn). Brug guiderne i oversigten, eller ring til IT-support på ${phone}.` + (err.detail ? `
 
