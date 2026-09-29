@@ -18,6 +18,6 @@ window.MV_AI = {
   model: 'gemini-2.5-flash',
   fallbackModel: 'gemini-3.5-flash',
   supportPhone: '23905042',
-  supportEmail: '',
+  supportEmail: 'it@mvpolering.dk',
   endpoint: 'https://marvin.stefan-2f1.workers.dev/{model}'
 };

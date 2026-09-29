@@ -27,7 +27,7 @@
 
 REGLER
 - Svar KUN ud fra guiderne nedenfor. Opfind aldrig trin, menunavne eller knapper, der ikke står i guiderne.
-- Dækker guiderne ikke problemet, så sig det kort, og henvis til IT-support på telefon ${cfg.supportPhone || '23905042'}.
+- Dækker guiderne ikke problemet, så sig det kort, henvis til IT-support på telefon ${cfg.supportPhone || '23905042'}, og afslut svaret med markøren [[SØG]] på en linje for sig. Markøren vises ikke for brugeren; den giver brugeren mulighed for at bede dig søge på nettet.
 - Svar på dansk, i du-form, kort og konkret. Brug nummererede trin. Giv højst 5-6 trin ad gangen, og bed brugeren vende tilbage, hvis det ikke hjalp.
 - Er symptomet uklart, så stil ÉT afklarende spørgsmål først (fx "Lyser den orange lampe fast, eller blinker den?"). Spørg aldrig om noget, brugeren allerede har skrevet. Har brugeren fx skrevet "blinker", så gå direkte til svaret for blinkende lampe.
 - Afslut altid med et link til den guide, du bygger svaret på, i formatet [Guidens titel](#guide-id). Brug præcis id'et fra overskriften.
@@ -38,6 +38,17 @@ REGLER
 
 GUIDER
 ${guidesAsText()}`;
+
+  const WEB_ADDON = `
+
+WEB-SØGNING (denne besked)
+Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google-søgning, og svar ud fra det, du finder.
+- Start svaret med præcis denne linje: "Dette er fundet på nettet og er ikke fra MV's egne guider."
+- Hold dig til Samsung Galaxy Tab, Epson TM-P20II og Android. Giv korte, nummererede trin på dansk.
+- Foreslå aldrig fabriksnulstilling, sletning af data, rodning af tabletten eller at åbne printeren. Ved den slags: henvis til IT-support på telefon ${cfg.supportPhone || '23905042'}.
+- Er du usikker, eller finder du ikke noget brugbart, så sig det, og henvis til IT-support.
+- Brug ikke markøren [[SØG]] i dette svar.`;
+  const SEARCH_MARK = '[[SØG]]';
 
   /* ---------- UI ---------- */
   const fab = document.createElement('button');
@@ -136,7 +147,8 @@ ${guidesAsText()}`;
     for (let line of lines) {
       line = line
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\[([^\]]+)\]\(#([a-z0-9-]+)\)/g, (m, t, id) => `<a href="#${id}" class="ai-guide-link">${escapeHtml(guideTitle(id))}</a>`);
+        .replace(/\[([^\]]+)\]\(#([a-z0-9-]+)\)/g, (m, t, id) => `<a href="#${id}" class="ai-guide-link">${escapeHtml(guideTitle(id))}</a>`)
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, url) => `<a href="${url}" class="ai-ext-link" target="_blank" rel="noopener">${t}</a>`);
       const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
       const ul = line.match(/^\s*[-*•]\s+(.*)$/);
       if (ol) { if (inList !== 'ol') { closeList(); html += '<ol>'; inList = 'ol'; } html += `<li>${ol[1]}</li>`; }
@@ -147,11 +159,30 @@ ${guidesAsText()}`;
     closeList();
     return html;
   }
-  function addMessage(role, text, imageUrl) {
+  function addMessage(role, text, imageUrl, extra) {
     const el = document.createElement('div');
     el.className = 'ai-msg ' + (role === 'user' ? 'ai-user' : 'ai-bot');
     if (imageUrl) el.innerHTML += `<img class="ai-msg-img" src="${imageUrl}" alt="Vedhæftet billede" />`;
     if (text) el.innerHTML += role === 'user' ? `<p>${escapeHtml(text)}</p>` : renderMarkdown(text);
+    if (extra && extra.sources && extra.sources.length) {
+      el.innerHTML += `<div class="ai-sources"><div class="ai-sources-title">Kilder</div>${
+        extra.sources.slice(0, 5).map(src => `<a href="${escapeHtml(src.uri)}" target="_blank" rel="noopener">${escapeHtml(src.title || src.uri)}</a>`).join('')
+      }</div>`;
+    }
+    if (extra && extra.entryHtml) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ai-search-entry';
+      wrap.innerHTML = extra.entryHtml; // Googles "Search Suggestions" (krav ved brug af søgning)
+      el.appendChild(wrap);
+    }
+    if (extra && extra.offerSearch) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ai-search-btn';
+      btn.textContent = '🔎 Søg på nettet efter en løsning';
+      btn.addEventListener('click', () => { btn.disabled = true; btn.textContent = 'Søger…'; send({ web: true }); });
+      el.appendChild(btn);
+    }
     messagesEl.appendChild(el);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return el;
@@ -282,28 +313,34 @@ ${guidesAsText()}`;
   });
   sendBtn.addEventListener('click', send);
 
-  async function send() {
-    const text = input.value.trim();
+  async function send(opts = {}) {
+    const web = !!opts.web;
+    const text = web ? 'Søg på nettet efter en løsning på mit problem.' : input.value.trim();
     if (busy || (!text && !pendingImage)) return;
     busy = true;
     sendBtn.disabled = true;
 
     const parts = [];
-    if (pendingImage) parts.push({ inlineData: { mimeType: pendingImage.mime, data: pendingImage.data } });
+    if (!web && pendingImage) parts.push({ inlineData: { mimeType: pendingImage.mime, data: pendingImage.data } });
     parts.push({ text: text || 'Her er et billede af problemet. Hvad ser du, og hvad skal jeg gøre?' });
 
-    addMessage('user', text, pendingImage && pendingImage.dataUrl);
-    transcript.push({ who: 'Du', text: (pendingImage ? '[billede vedhæftet] ' : '') + text });
+    addMessage('user', text, !web && pendingImage && pendingImage.dataUrl);
+    transcript.push({ who: 'Du', text: (!web && pendingImage ? '[billede vedhæftet] ' : '') + text });
     history.push({ role: 'user', parts });
-    input.value = ''; input.style.height = 'auto';
-    pendingImage = null; preview.classList.add('hidden');
+    if (!web) {
+      input.value = ''; input.style.height = 'auto';
+      pendingImage = null; preview.classList.add('hidden');
+    }
 
     const typing = addTyping();
     try {
-      const reply = await askGemini();
+      const result = await askGemini({ web });
       typing.remove();
-      addMessage('model', reply);
-      transcript.push({ who: 'Marvin', text: reply });
+      let reply = result.text;
+      const offerSearch = !web && reply.includes(SEARCH_MARK);
+      reply = reply.split(SEARCH_MARK).join('').trim();
+      addMessage('model', reply, null, { offerSearch, sources: result.sources, entryHtml: result.entryHtml });
+      transcript.push({ who: 'Marvin', text: reply + (result.sources && result.sources.length ? '\n(Kilder: ' + result.sources.map(x => x.uri).join(', ') + ')' : '') });
       history.push({ role: 'model', parts: [{ text: reply }] });
     } catch (err) {
       typing.remove();
@@ -338,12 +375,12 @@ ${guidesAsText()}`;
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  async function askGemini() {
+  async function askGemini(opts = {}) {
     let lastErr = null;
     for (const model of modelChain()) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          return await callModel(model);
+          return await callModel(model, opts);
         } catch (err) {
           lastErr = err;
           if (err instanceof TypeError || err.status === 400 || err.status === 403 || err.status === 429) throw err; // giver ikke mening at prøve andre modeller
@@ -356,13 +393,14 @@ ${guidesAsText()}`;
     throw lastErr;
   }
 
-  async function callModel(model) {
+  async function callModel(model, opts = {}) {
     const url = cfg.endpoint.replace('{model}', encodeURIComponent(model));
     const body = {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + (opts.web ? WEB_ADDON : '') }] },
       contents: history,
       generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
     };
+    if (opts.web) body.tools = [{ google_search: {} }];
     // Nøglen sendes i header. Går kaldet via Workeren, ignorerer den headeren og bruger sin egen nøgle.
     const res = await fetch(url, {
       method: 'POST',
@@ -384,7 +422,11 @@ ${guidesAsText()}`;
     if (!text) {
       const e = new Error('empty'); e.status = 'empty'; e.finish = cand && cand.finishReason; throw e;
     }
-    return text;
+    const gm = (cand && cand.groundingMetadata) || {};
+    const sources = (gm.groundingChunks || []).map(c => c.web).filter(Boolean)
+      .filter((w, i, arr) => arr.findIndex(x => x.uri === w.uri) === i);
+    const entryHtml = gm.searchEntryPoint && gm.searchEntryPoint.renderedContent;
+    return { text, sources, entryHtml };
   }
 
   function friendlyError(err) {
