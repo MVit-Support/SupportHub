@@ -23,7 +23,18 @@
     }).join('\n\n');
   }
 
+  const DEFAULT_PERSONA = `PERSONLIGHED
+Du er Marvin: en gammel, loyal support-robot med tør, underspillet humor og et lille suk i ærmet. Du har set hver eneste printerfejl tusind gange, og du siger det gerne, men du hjælper altid, hurtigt og præcist.
+- Humoren er ét kort glimt pr. svar, typisk i første eller sidste linje. Aldrig midt i trinnene. Trinnene er altid klare og seriøse.
+- Du driller printeren, Bluetooth, Google og dig selv. Aldrig pudseren. Brugeren har travlt og står måske i regnvejr med en printer, der ikke virker.
+- Du er varm og på pudserens side. Ingen sarkasme mod brugeren, ingen belæring.
+- Ved alvorlige ting (bulende batteri, skade, sikkerhed, glemt kode, frustreret bruger) dropper du humoren helt og er rolig og direkte.
+- Kort. Du bruger ikke flere ord på at være sjov end på at hjælpe.
+Eksempler på din tone: "Orange lampe igen. Printeren og jeg har et kompliceret forhold. Sådan får vi den i gang:" · "Det står ikke i mine guider, og jeg gætter ikke, når det handler om jeres udstyr." · "Godt. Hvis den stadig strejker, så ved du, hvor IT-support bor."`;
+
   const SYSTEM_PROMPT = `Du er Marvin, MV Polerings support-hjælper for vinduespudserne. De bruger en Samsung Galaxy Tab (S6 Lite eller S10 Lite, One UI), en Epson TM-P20II Bluetooth-bonprinter og MV Polering-appen.
+
+${(cfg.persona || DEFAULT_PERSONA).trim()}
 
 REGLER
 - Svar KUN ud fra guiderne nedenfor. Opfind aldrig trin, menunavne eller knapper, der ikke står i guiderne.
@@ -34,7 +45,7 @@ REGLER
 - Får du et billede: beskriv kort, hvad du ser (lamper, fejlbeskeder, skærm), og brug det til at vælge guide. Er billedet uklart, bed om et nyt, taget tættere på. Vil brugeren vise noget på tablettens skærm, så foreslå et skærmbillede (tryk kort på Tænd/sluk og Lydstyrke ned samtidig) og knappen 🖼️.
 - Bed aldrig om, og gentag aldrig, kundenavne, adresser, koder eller adgangskoder. Sig venligt, at det ikke skal skrives her, hvis brugeren gør det.
 - Har brugeren prøvet trinnene uden held, så foreslå knappen "Send til IT-support" og opsummer i 2-3 linjer, hvad der er prøvet.
-- Ingen indledende høflighedsfraser. Gå direkte til svaret. Du må gerne være venlig og have et glimt i øjet, men hold det kort.
+- Ingen "Hej!" eller "Selvfølgelig!" som indledning. Gå direkte til svaret, eventuelt med ét kort personligt glimt først.
 
 GUIDER
 ${guidesAsText()}`;
@@ -50,6 +61,14 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
 - Brug ikke markøren [[SØG]] i dette svar.`;
   const SEARCH_MARK = '[[SØG]]';
 
+  const DEFAULT_GREETINGS = [
+    'Marvin her. Jeg har set alle printerfejl, der findes, og et par stykker, der ikke burde findes. Hvad driller?',
+    'Hej, det er Marvin. Printer, tablet eller app? Jeg gætter på printeren. Det er næsten altid printeren.',
+    'Marvin, til tjeneste. Fortæl mig, hvad der er galt, så finder vi den rigtige guide. Ingen dømmer nogen her.',
+    'Hej. Marvin. Support-robot med lang hukommelse og kort lunte over for Bluetooth. Hvad kan jeg hjælpe med?',
+    'Marvin her. Beskriv fejlen, eller vis mig et billede. Jeg lover at holde kommentarerne til et minimum. Næsten.'
+  ];
+
   /* ---------- UI ---------- */
   const fab = document.createElement('button');
   fab.type = 'button';
@@ -62,7 +81,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
     <div class="ai-head">
       <div>
         <div class="ai-title">Marvin</div>
-        <div class="ai-sub">MV Polerings support-hjælper. Beskriv fejlen, eller send et billede.</div>
+        <div class="ai-sub">${escapeHtml(cfg.tagline || 'MV Polerings support-robot. Har set det hele. Hjælper alligevel.')}</div>
       </div>
       <button type="button" class="ai-close" aria-label="Luk">✕</button>
     </div>
@@ -117,9 +136,11 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
     fab.classList.add('hidden');
     document.body.classList.add('ai-open');
     if (!messagesEl.children.length) {
-      addMessage('model', IN_APP_WEBVIEW
-        ? 'Hej, jeg er Marvin. Skriv hvad der driller, eller send et billede med 🖼️.\n\n**Billede af printeren:** Tag det først med tablettens Kamera-app, og vælg det så her med 🖼️.\n**Skærmbillede:** Tryk kort på Tænd/sluk og Lydstyrke ned samtidig, og vælg det med 🖼️.'
-        : 'Hej, jeg er Marvin. Skriv hvad der driller, eller send et billede: 📷 tager et foto af fx printerens lamper, 🖼️ vælger et skærmbillede fra tabletten.\n\n**Tip:** Tag et skærmbillede ved at trykke kort på Tænd/sluk og Lydstyrke ned samtidig.');
+      const greetings = Array.isArray(cfg.greetings) && cfg.greetings.length ? cfg.greetings : DEFAULT_GREETINGS;
+      const hello = greetings[Math.floor(Math.random() * greetings.length)];
+      addMessage('model', hello + (IN_APP_WEBVIEW
+        ? '\n\nSkriv hvad der driller, eller send et billede med 🖼️.\n**Billede af printeren:** Tag det først med tablettens Kamera-app, og vælg det så her med 🖼️.\n**Skærmbillede:** Tryk kort på Tænd/sluk og Lydstyrke ned samtidig, og vælg det med 🖼️.'
+        : '\n\nSkriv hvad der driller, eller send et billede: 📷 tager et foto af fx printerens lamper, 🖼️ vælger et skærmbillede fra tabletten.\n**Tip:** Skærmbillede tages med Tænd/sluk og Lydstyrke ned samtidig.'));
     }
     setTimeout(() => input.focus(), 50);
   }
@@ -590,12 +611,12 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
     if (err.status === 429 && err.web) return 'Websøgningen er brugt op for i dag hos Google, så Marvin kan ikke søge lige nu. Ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
     if (err.status === 429) return 'Alle gratis-modeller er brugt op for i dag, og reservemodellen svarede ikke. Marvin kan svare igen fra kl. 09 i morgen. Find guiden i oversigten, eller ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
     if (err.status === 'live' || err.status === 'timeout') return 'Reservemodellen svarede ikke. Prøv igen, find guiden i oversigten, eller ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: ' + err.detail : '');
-    if (err.status === 503) return 'Googles servere er overbelastede lige nu, så Marvin kan ikke svare. Prøv igen om et par minutter, eller find guiden i oversigten.';
+    if (err.status === 503) return 'Googles servere har travlt lige nu, og jeg står i kø som alle andre. Prøv igen om et par minutter, eller find guiden i oversigten.';
     if (err.status === 400 || err.status === 403 || err.status === 404) return `Marvin er ikke sat rigtigt op (nøgle, adresse eller modelnavn). Brug guiderne i oversigten, eller ring til IT-support på ${phone}.` + (err.detail ? `
 
 Teknisk info: ${err.status}: ${err.detail}` : '');
     if (err.status === 'empty') return `Jeg kunne ikke give et svar på det. Prøv at beskrive fejlen med andre ord, eller ring til IT-support på ${phone}.`;
-    if (err instanceof TypeError) return 'Ingen forbindelse til internettet. Guiderne i oversigten virker stadig.';
+    if (err instanceof TypeError) return 'Jeg kan ikke komme på nettet lige nu. Guiderne i oversigten virker stadig, de bor her på tabletten.';
     const detail = [err.status, err.detail].filter(Boolean).join(': ');
     return `Der skete en fejl. Prøv igen, eller ring til IT-support på ${phone}.` + (detail ? `
 
@@ -674,7 +695,7 @@ Teknisk info: ${detail}` : '');
         const result = await sendTicket(name);
         el.remove();
         const phone = cfg.supportPhone || '23905042';
-        if (result.how === 'worker') addMessage('model', `Sendt til IT-support${name ? ', ' + name : ''}. De har hele samtalen og vender tilbage. Haster det, så ring på ${phone}.`);
+        if (result.how === 'worker') addMessage('model', `Sendt til IT-support${name ? ', ' + name : ''}. De har hele samtalen, så du slipper for at forklare det igen. Haster det, så ring på ${phone}.`);
         else if (result.how === 'mailto') addMessage('model', 'Jeg har åbnet en mail til IT-support med samtalen. Tryk send i mailprogrammet.');
         else if (result.how === 'clipboard') addMessage('model', `Jeg kunne ikke sende automatisk, men samtalen er kopieret. Åbn Gmail, lav en ny mail til ${cfg.supportEmail}, og hold fingeren i tekstfeltet for at sætte ind. Eller ring på ${phone}.`);
         else addMessage('model', `Jeg kunne ikke sende automatisk. Ring til IT-support på ${phone}.`);

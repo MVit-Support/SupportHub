@@ -18,6 +18,10 @@
                 Test reserven med ?marvin=live i adressen.
   supportPhone  Vises i svar, når guiderne ikke dækker.
   supportEmail  Bruges af knappen "Send til IT-support". Tom streng = knappen skjules.
+  tagline       Den lille undertekst i chattens blå bjælke.
+  greetings     Liste af velkomster. Marvin vælger én tilfældigt, hver gang chatten åbnes.
+  persona       Marvins personlighed, skrevet som instruktion til ham. Udelad for at bruge standarden
+                (tør, underspillet humor, driller printeren, aldrig pudseren, seriøs ved alvorlige ting).
   endpoint      Adressen på jeres Cloudflare Worker + '/{model}'. {model} erstattes med modelnavnet.
                 Uden Worker: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 */
@@ -37,5 +41,13 @@ window.MV_AI = {
   ],
   supportPhone: '23905042',
   supportEmail: 'it@mvpolering.dk',
+  tagline: 'MV Polerings support-robot. Har set det hele. Hjælper alligevel.',
+  greetings: [
+    'Marvin her. Jeg har set alle printerfejl, der findes, og et par stykker, der ikke burde findes. Hvad driller?',
+    'Hej, det er Marvin. Printer, tablet eller app? Jeg gætter på printeren. Det er næsten altid printeren.',
+    'Marvin, til tjeneste. Fortæl mig, hvad der er galt, så finder vi den rigtige guide. Ingen dømmer nogen her.',
+    'Hej. Marvin. Support-robot med lang hukommelse og kort lunte over for Bluetooth. Hvad kan jeg hjælpe med?',
+    'Marvin her. Beskriv fejlen, eller vis mig et billede. Jeg lover at holde kommentarerne til et minimum. Næsten.'
+  ],
   endpoint: 'https://marvin.stefan-2f1.workers.dev/{model}'
 };
