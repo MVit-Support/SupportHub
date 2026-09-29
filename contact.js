@@ -90,11 +90,13 @@
           <textarea name="message" rows="6" placeholder="Beskriv hvad der er galt, og hvad du allerede har prøvet…" required></textarea>
         </label>
         <div class="contact-attach">
-          <label class="btn soft contact-attach-btn">🖼️ Vedhæft skærmbillede
+          ${IN_APP_WEBVIEW
+            ? `<div class="contact-attach-hint contact-attach-blocked"><strong>Billeder kan ikke vedhæftes inde fra MV-appen.</strong> Beskriv fejlen med ord her, eller send skærmbilledet fra Galleri: åbn billedet, tryk <strong>Del</strong> → <strong>Gmail</strong> → til <strong>${escapeHtml(email || 'IT-support')}</strong>. Åbner du support-siden i Chrome, kan du vedhæfte direkte.</div>`
+            : `<label class="btn soft contact-attach-btn">🖼️ Vedhæft skærmbillede
             <input type="file" accept="image/*" multiple hidden />
           </label>
           <div class="contact-thumbs"></div>
-          <div class="contact-attach-hint">Skærmbillede: tryk kort på Tænd/sluk og Lydstyrke ned samtidig. Op til 3 billeder.</div>
+          <div class="contact-attach-hint">Skærmbillede: tryk kort på Tænd/sluk og Lydstyrke ned samtidig. Op til 3 billeder.</div>`}
         </div>
         <div class="contact-hint">Skriv ikke kundenavne, adresser eller koder. Tabletmodel og tidspunkt sendes med automatisk.</div>
         <div class="contact-actions">
@@ -111,29 +113,41 @@
   const sendBtn = sheet.querySelector('.contact-send');
   const nameInput = form.elements.name;
   const msgInput = form.elements.message;
-  const fileInput = form.querySelector('.contact-attach input[type=file]');
-  const thumbs = form.querySelector('.contact-thumbs');
+  const fileInput = form.querySelector('.contact-attach input[type=file]') || document.createElement('input');
+  const thumbs = form.querySelector('.contact-thumbs') || document.createElement('div');
   const MAX_IMAGES = 3;
   const MAX_PX = 1280;
   let attachments = []; // {name, mimeType, data(base64), dataUrl}
 
-  function shrinkImage(file) {
+  function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error || new Error('read failed'));
+      r.readAsDataURL(file);
+    });
+  }
+  function loadImage(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const scale = Math.min(1, MAX_PX / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        resolve({ name: (file.name || 'billede').replace(/\.[a-z0-9]+$/i, '') + '.jpg', mimeType: 'image/jpeg', data: dataUrl.split(',')[1], dataUrl });
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
-      img.src = url;
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('bad image'));
+      img.src = src;
     });
+  }
+  async function shrinkImage(file) {
+    let img;
+    const url = URL.createObjectURL(file);
+    try { img = await loadImage(url); }
+    catch (_) { img = await loadImage(await readAsDataUrl(file)); } // reserve: læs filen direkte
+    finally { URL.revokeObjectURL(url); }
+    const scale = Math.min(1, MAX_PX / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    return { name: (file.name || 'billede').replace(/\.[a-z0-9]+$/i, '') + '.jpg', mimeType: 'image/jpeg', data: dataUrl.split(',')[1], dataUrl };
   }
   function renderThumbs() {
     thumbs.innerHTML = attachments.map((a, i) => `<div class="contact-thumb"><img src="${a.dataUrl}" alt="" /><button type="button" data-i="${i}" aria-label="Fjern billede">✕</button></div>`).join('');
@@ -146,11 +160,20 @@
   });
   fileInput.addEventListener('change', async () => {
     const files = [...(fileInput.files || [])];
-    fileInput.value = '';
+    status.textContent = files.length ? 'Læser billede…' : '';
     for (const f of files) {
       if (attachments.length >= MAX_IMAGES) { status.textContent = 'Højst ' + MAX_IMAGES + ' billeder.'; break; }
-      try { attachments.push(await shrinkImage(f)); } catch (_) { status.textContent = 'Et billede kunne ikke læses.'; }
+      try {
+        attachments.push(await shrinkImage(f));
+        status.textContent = attachments.length + (attachments.length === 1 ? ' billede vedhæftet.' : ' billeder vedhæftet.');
+        status.classList.add('ok');
+      } catch (err) {
+        console.warn('Kontakt: billede kunne ikke læses', err);
+        status.textContent = 'Billedet kunne ikke læses. Prøv at vælge det igen, eller tag et nyt skærmbillede.';
+        status.classList.remove('ok');
+      }
     }
+    fileInput.value = '';
     renderThumbs();
   });
   // Ctrl+V med et billede i beskedfeltet
@@ -210,7 +233,7 @@
     sendBtn.disabled = true;
     const label = sendBtn.textContent;
     sendBtn.textContent = 'Sender…';
-    status.textContent = '';
+    status.textContent = ''; status.classList.remove('ok');
     const how = await sendTicket(name, message);
     sendBtn.disabled = false;
     sendBtn.textContent = label;

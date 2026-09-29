@@ -117,6 +117,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
   document.body.appendChild(fab);
   document.body.appendChild(sheet);
   document.body.appendChild(camera);
+  if (IN_APP_WEBVIEW) sheet.classList.add('ai-no-images'); // appens browser leverer ikke valgte billeder til siden
 
   const messagesEl = sheet.querySelector('#aiMessages');
   const input = sheet.querySelector('#aiInput');
@@ -139,7 +140,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
       const greetings = Array.isArray(cfg.greetings) && cfg.greetings.length ? cfg.greetings : DEFAULT_GREETINGS;
       const hello = greetings[Math.floor(Math.random() * greetings.length)];
       addMessage('model', hello + (IN_APP_WEBVIEW
-        ? '\n\nSkriv hvad der driller, eller send et billede med 🖼️.\n**Billede af printeren:** Tag det først med tablettens Kamera-app, og vælg det så her med 🖼️.\n**Skærmbillede:** Tryk kort på Tænd/sluk og Lydstyrke ned samtidig, og vælg det med 🖼️.'
+        ? '\n\nSkriv hvad der driller, så præcist du kan: hvilke lamper lyser eller blinker, og hvad står der på skærmen?\n_Billeder kan ikke sendes inde fra MV-appen. Åbn support-siden i Chrome, hvis du vil vise mig et billede._'
         : '\n\nSkriv hvad der driller, eller send et billede: 📷 tager et foto af fx printerens lamper, 🖼️ vælger et skærmbillede fra tabletten.\n**Tip:** Skærmbillede tages med Tænd/sluk og Lydstyrke ned samtidig.'));
     }
     setTimeout(() => input.focus(), 50);
@@ -256,7 +257,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
   let stream = null;
   let facing = 'environment';
 
-  const CAMERA_HINT = 'Inde fra MV-appen kan jeg ikke åbne kameraet direkte. Gør sådan:\n\n1. Gå til startskærmen, og åbn tablettens **Kamera**-app.\n2. Tag billedet af fx printerens lamper.\n3. Gå tilbage hertil, og tryk på 🖼️ for at vælge billedet.\n\nSkærmbilleder tages med Tænd/sluk og Lydstyrke ned samtidig og vælges også med 🖼️.';
+  const CAMERA_HINT = 'Inde fra MV-appen kan jeg hverken bruge kameraet eller modtage billeder. Det er appens indbyggede browser, der stopper det, ikke mig.\n\nBeskriv i stedet, hvad du ser: Hvilke lamper lyser eller blinker på printeren, og hvad står der på skærmen? Så finder jeg den rigtige guide.\n\nÅbner du support-siden i Chrome på tabletten, virker både kamera og billeder.';
 
   async function openCamera() {
     if (IN_APP_WEBVIEW) { addMessage('model', CAMERA_HINT); return; }
