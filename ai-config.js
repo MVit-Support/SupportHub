@@ -8,6 +8,8 @@
                 Eksempler: 'gemini-2.5-flash' (stabil, mindst kø), 'gemini-3.5-flash', 'gemini-3.8-flash' (nyest, ofte "high demand" på gratis-niveauet).
                 Marvin prøver altid også 'gemini-2.5-flash' og 'gemini-2.5-flash-lite' som sidste udvej.
   fallbackModel Reservemodel, hvis den første fejler (fx findes ikke eller er overbelastet). Standard: 'gemini-2.5-flash'.
+  searchModel   Model til websøgning (knappen "Søg på nettet"). Gemini 3-modellerne har 5.000 gratis søgninger/md.
+                Standard: 'gemini-3.8-flash', derefter prøves 'gemini-3.5-flash' og de øvrige.
   supportPhone  Vises i svar, når guiderne ikke dækker.
   supportEmail  Bruges af knappen "Send til IT-support". Tom streng = knappen skjules.
   endpoint      Adressen på jeres Cloudflare Worker + '/{model}'. {model} erstattes med modelnavnet.
@@ -17,6 +19,7 @@ window.MV_AI = {
   apiKey: 'worker',
   model: 'gemini-2.5-flash',
   fallbackModel: 'gemini-3.5-flash',
+  searchModel: 'gemini-3.8-flash',
   supportPhone: '23905042',
   supportEmail: 'it@mvpolering.dk',
   endpoint: 'https://marvin.stefan-2f1.workers.dev/{model}'

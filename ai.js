@@ -180,7 +180,11 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
       btn.type = 'button';
       btn.className = 'ai-search-btn';
       btn.textContent = '🔎 Søg på nettet efter en løsning';
-      btn.addEventListener('click', () => { btn.disabled = true; btn.textContent = 'Søger…'; send({ web: true }); });
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Søger…';
+        await send({ web: true });
+        btn.disabled = false; btn.textContent = '🔎 Søg igen';
+      });
       el.appendChild(btn);
     }
     messagesEl.appendChild(el);
@@ -343,6 +347,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
       transcript.push({ who: 'Marvin', text: reply + (result.sources && result.sources.length ? '\n(Kilder: ' + result.sources.map(x => x.uri).join(', ') + ')' : '') });
       history.push({ role: 'model', parts: [{ text: reply }] });
     } catch (err) {
+      console.error('Marvin:', err);
       typing.remove();
       history.pop(); // fjern den ubesvarede besked, så den ikke sendes igen
       addMessage('model', friendlyError(err));
@@ -369,21 +374,25 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
   }
 
   // Kæde af modeller: den valgte, reserven og to sikre gratis-modeller. Hver prøves op til 2 gange ved 503.
-  function modelChain() {
-    const chain = [cfg.model, cfg.fallbackModel, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+  function modelChain(opts = {}) {
+    const chain = opts.web
+      ? [cfg.searchModel, 'gemini-3.8-flash', 'gemini-3.5-flash', cfg.model, cfg.fallbackModel, 'gemini-2.5-flash']
+      : [cfg.model, cfg.fallbackModel, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
     return chain.filter((m, i) => m && chain.indexOf(m) === i);
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   async function askGemini(opts = {}) {
     let lastErr = null;
-    for (const model of modelChain()) {
+    for (const model of modelChain(opts)) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           return await callModel(model, opts);
         } catch (err) {
           lastErr = err;
-          if (err instanceof TypeError || err.status === 400 || err.status === 403 || err.status === 429) throw err; // giver ikke mening at prøve andre modeller
+          if (err instanceof TypeError || err.status === 400 || err.status === 403) throw err; // giver ikke mening at prøve andre modeller
+          if (err.status === 429 && !opts.web) throw err; // almindelig kvote er fælles, men søgekvoten er pr. model
+          if (err.status === 429) break; // websøgning: næste model
           console.warn('Marvin: ' + model + ' fejlede (' + err.status + ')' + (attempt === 0 && err.status === 503 ? ', prøver igen om 1,5 s' : ''));
           if (err.status === 503 && attempt === 0) { await sleep(1500); continue; }
           break; // næste model
@@ -410,6 +419,7 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
     if (!res.ok) {
       const err = new Error('HTTP ' + res.status);
       err.status = res.status;
+      err.web = !!opts.web;
       try { err.detail = (await res.json()).error?.message; } catch (_) {}
       console.error('Marvin: Gemini svarede ' + res.status + (err.detail ? ': ' + err.detail : ''));
       throw err;
@@ -431,7 +441,8 @@ Brugeren har bedt dig søge på nettet, fordi guiderne ikke dækker. Brug Google
 
   function friendlyError(err) {
     const phone = cfg.supportPhone || '23905042';
-    if (err.status === 429) return 'Marvin er optaget lige nu. Prøv igen om et minut, eller find guiden i oversigten.';
+    if (err.status === 429 && err.web) return 'Websøgningen er brugt op for i dag hos Google, så Marvin kan ikke søge lige nu. Ring til IT-support på ' + phone + '.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
+    if (err.status === 429) return 'Marvin er optaget lige nu. Prøv igen om et minut, eller find guiden i oversigten.' + (err.detail ? '\n\nTeknisk info: 429: ' + err.detail : '');
     if (err.status === 503) return 'Googles servere er overbelastede lige nu, så Marvin kan ikke svare. Prøv igen om et par minutter, eller find guiden i oversigten.';
     if (err.status === 400 || err.status === 403 || err.status === 404) return `Marvin er ikke sat rigtigt op (nøgle, adresse eller modelnavn). Brug guiderne i oversigten, eller ring til IT-support på ${phone}.` + (err.detail ? `
 
@@ -448,7 +459,11 @@ Teknisk info: ${detail}` : '');
   if (escalateBtn) {
     escalateBtn.addEventListener('click', () => {
       const lines = transcript.map(t => `${t.who}: ${t.text}`).join('\n\n');
-      const body = `Hej IT-support\n\nJeg har brug for hjælp. Her er, hvad jeg har prøvet sammen med Marvin:\n\n${lines || '(ingen samtale endnu)'}\n\nTablet: \nNavn: \n`;
+      const ua = navigator.userAgent;
+      const modelMatch = ua.match(/\b(SM-[A-Z0-9]+)\b/);
+      const androidMatch = ua.match(/Android\s+([\d.]+)/);
+      const tablet = (modelMatch ? modelMatch[1] : 'ukendt model') + (androidMatch ? ', Android ' + androidMatch[1] : '');
+      const body = `Hej IT-support\n\nJeg har brug for hjælp. Her er, hvad jeg har prøvet sammen med Marvin:\n\n${lines || '(ingen samtale endnu)'}\n\nTablet: ${tablet}\nNavn: \n`;
       const subject = 'Support fra tablet: ' + (transcript.find(t => t.who === 'Du') || { text: 'fejl' }).text.slice(0, 60);
       location.href = `mailto:${encodeURIComponent(cfg.supportEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     });
